@@ -1,5 +1,8 @@
 {
   "deploy": {
-    "entrypoint": "main.mjs"
+    "entrypoint": "backend/src/main.mjs"
+  },
+  "imports": {
+    "@std/path": "jsr:@std/path@^1.0.8"
   }
 }
