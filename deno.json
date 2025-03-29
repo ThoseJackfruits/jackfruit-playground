@@ -1,5 +1,10 @@
 {
   "deploy": {
+    "project": "08ea1fb9-c6d0-4ee9-9d59-3ac1b0a42a3d",
+    "exclude": [
+      "**/node_modules"
+    ],
+    "include": [],
     "entrypoint": "backend/src/main.mjs"
   },
   "imports": {
