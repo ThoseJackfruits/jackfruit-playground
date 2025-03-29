@@ -17,8 +17,27 @@ Deno.serve(async req => {
   const localPath = path.join('.', pathname);
 
   if (pathname.startsWith('/frontend/src/')) {
-    return new Response(await Deno.readTextFile(localPath, { signal }));
+    return new Response(await Deno.readTextFile(localPath, { signal }), {
+      headers: {
+        "Content-Type": getContentType(localPath),
+      },
+    });
   }
 
   return new Response("Not found", { status: 404 });
 });
+
+function getContentType(pathname) {
+  const ext = path.extname(pathname);
+  switch (ext) {
+    case ".js":
+    case ".mjs":
+      return "text/javascript";
+    case ".css":
+      return "text/css";
+    case ".html":
+      return "text/html";
+    default:
+      throw new Error(`Serving unknown file extension: ${ ext }`);
+  }
+}
