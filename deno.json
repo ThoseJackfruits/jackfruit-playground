@@ -9,5 +9,9 @@
   },
   "imports": {
     "@std/path": "jsr:@std/path@^1.0.8"
+  },
+  "tasks": {
+    "start": "deno run --allow-net --allow-read backend/src/main.mjs",
+    "watch": "deno run --allow-net --allow-read --watch=backend/ backend/src/main.mjs"
   }
 }
