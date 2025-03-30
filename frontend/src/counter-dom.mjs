@@ -1,4 +1,4 @@
-class PlaygroundBaseElement extends HTMLElement {
+class CounterDOMElement extends HTMLElement {
   static observedAttributes = [ 'count' ];
 
   get count() {
@@ -13,6 +13,7 @@ class PlaygroundBaseElement extends HTMLElement {
 
   // CustomElement
   connectedCallback() {
+    this.innerHTML = '';
     this.render();
   }
 
@@ -34,17 +35,28 @@ class PlaygroundBaseElement extends HTMLElement {
   // RENDER ////////////////////////////////////////////////////////////////////
 
   render() {
-    if (!this.querySelector('button')) {
-      let button = document.createElement('button');
+    let header = this.querySelector('#header');
+    let button = this.querySelector('#button');
+    let paragraph = this.querySelector('#count');
+
+    if (!header) {
+      header = document.createElement('h2');
+      header.id = 'header';
+      header.textContent = 'Counter DOM';
+      this.appendChild(header);
+    }
+
+    if (!button) {
+      button = document.createElement('button');
+      button.id = 'button';
       button.textContent = 'Click me';
       button.addEventListener('click', this.handleClick);
       this.appendChild(button);
     }
 
-    let paragraph = this.querySelector('p');
-
     if (!paragraph) {
       paragraph = document.createElement('p');
+      paragraph.id = 'count';
       this.appendChild(paragraph);
     }
 
@@ -52,6 +64,4 @@ class PlaygroundBaseElement extends HTMLElement {
   }
 }
 
-customElements.define('playground-base', PlaygroundBaseElement);
-
-document.body.innerHTML = '<playground-base></playground-base>';
+customElements.define('counter-dom', CounterDOMElement);

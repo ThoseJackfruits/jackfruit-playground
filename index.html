@@ -3,11 +3,20 @@
   <head>
     <title>Jackfruit Playground</title>
     <script src="/frontend/src/start.mjs"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "lit": "https://unpkg.com/lit@3.2.1/index.js?module"
+        }
+      }
+    </script>
+    <script async type="module" src="https://unpkg.com/lit@3.2.1/index.js?module"></script>
   </head>
   <body>
-    <playground-base>
+    <counter-dom>
       <h1>This website needs JS to work.</h1>
       <p>please</p>
-    </playground-base>
+    </counter-dom>
+    <counter-lit></counter-lit>
   </body>
 </html>
