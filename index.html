@@ -10,7 +10,9 @@
         }
       }
     </script>
-    <script async type="module" src="https://unpkg.com/lit@3.2.1/index.js?module"></script>
+    <link rel="preload" href="https://unpkg.com/lit@3.2.1/index.js?module" as="script" crossorigin>
+    <script type="module" src="https://unpkg.com/lit@3.2.1/index.js?module"></script>
+    <meta http-equiv="Cache-Control" content="max-age=86400">
   </head>
   <body>
     <counter-dom>
