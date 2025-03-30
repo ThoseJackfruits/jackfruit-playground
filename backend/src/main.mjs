@@ -5,19 +5,17 @@ Deno.serve(async req => {
   const { pathname } = url;
   const { signal } = req;
 
-  if (pathname === '/' || !pathname) {
-    // serve the index.html file
-    return new Response(await Deno.readTextFile("./index.html", { signal }), {
+  if (pathname === '/' || pathname === '') {
+    return new Response(await Deno.readFile("./index.html", { signal }), {
       headers: {
         "Content-Type": "text/html",
       },
     });
   }
 
-  const localPath = path.join('.', pathname);
-
   if (pathname.startsWith('/frontend/src/')) {
-    return new Response(await Deno.readTextFile(localPath, { signal }), {
+    const localPath = path.join('.', pathname);
+    return new Response(await Deno.readFile(localPath, { signal }), {
       headers: {
         "Content-Type": getContentType(localPath),
       },
@@ -29,6 +27,7 @@ Deno.serve(async req => {
 
 function getContentType(pathname) {
   const ext = path.extname(pathname);
+
   switch (ext) {
     case ".js":
     case ".mjs":

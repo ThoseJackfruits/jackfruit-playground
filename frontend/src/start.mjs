@@ -1,1 +1,5 @@
-console.log('client loaded!!!');
+async function main() {
+  await import('/frontend/src/playground-base.mjs');
+}
+
+main();
