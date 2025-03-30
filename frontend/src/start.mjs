@@ -1,6 +1,8 @@
 async function main() {
-  await import('/frontend/src/counter-dom.mjs');
-  await import('/frontend/src/counter-lit.mjs');
+  await Promise.all([
+    import('/frontend/src/counter-dom.mjs'),
+    import('/frontend/src/counter-lit.mjs')
+  ]);
 }
 
 main();
