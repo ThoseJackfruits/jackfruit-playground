@@ -49,7 +49,7 @@ class CounterDOMElement extends HTMLElement {
     if (!button) {
       button = document.createElement('button');
       button.id = 'button';
-      button.textContent = 'Click me';
+      button.textContent = 'Increment';
       button.addEventListener('click', this.handleClick);
       this.appendChild(button);
     }
