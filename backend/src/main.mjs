@@ -1,7 +1,9 @@
 import * as path from "jsr:@std/path";
 
 /** @type {Deno.Kv} */
-const kv = await Deno.openKv("./local.db");
+const kv = await Deno.env.get('DENO_DEPLOYMENT_ID')
+  ? await Deno.openKv() // Use Deno Deploy's KV store
+  : await Deno.openKv("./local.db");
 
 Deno.serve(async req => {
   const url = new URL(req.url);
