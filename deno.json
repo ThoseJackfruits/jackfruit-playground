@@ -14,7 +14,7 @@
     "include": [ "backend/src" ]
   },
   "tasks": {
-    "start": "deno run --allow-net --allow-read backend/src/main.mjs",
-    "watch": "deno run --allow-net --allow-read --watch=backend/ backend/src/main.mjs"
+    "start": "deno run --allow-net --allow-read --allow-write --unstable-kv backend/src/main.mjs",
+    "watch": "deno run --allow-net --allow-read --allow-write --unstable-kv --watch=backend/ backend/src/main.mjs"
   }
 }

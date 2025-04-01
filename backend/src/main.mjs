@@ -1,34 +1,39 @@
 import * as path from "jsr:@std/path";
 
+/** @type {Deno.Kv} */
+const kv = await Deno.openKv("./local.db");
+
 Deno.serve(async req => {
   const url = new URL(req.url);
   const { pathname } = url;
   const { signal } = req;
+  const localPath = path.join('.', pathname);
+  const extension = path.extname(localPath);
 
-  if (pathname === '/' || pathname === '') {
-    return new Response(await Deno.readFile("./index.html", { signal }), {
-      headers: {
-        "Content-Type": "text/html",
-      },
-    });
+  if (pathname.startsWith('/api/')) {
+    return new Response("Not implemented", { status: 501 });
   }
 
   if (pathname.startsWith('/frontend/src/')) {
-    const localPath = path.join('.', pathname);
     return new Response(await Deno.readFile(localPath, { signal }), {
       headers: {
-        "Content-Type": getContentType(localPath),
+        "Content-Type": getContentType(extension)
       },
     });
   }
 
-  return new Response("Not found", { status: 404 });
+  // Init the visitor count to 0 if the key doesn't exist
+
+  return new Response(await Deno.readFile("./index.html", { signal }), {
+    headers: {
+      "Content-Type": "text/html",
+      "X-Visitor-Count": await getNextVisitorCount(),
+    },
+  });
 });
 
-function getContentType(pathname) {
-  const ext = path.extname(pathname);
-
-  switch (ext) {
+function getContentType(extension) {
+  switch (extension) {
     case ".js":
     case ".mjs":
       return "text/javascript";
@@ -39,4 +44,23 @@ function getContentType(pathname) {
     default:
       throw new Error(`Serving unknown file extension: ${ ext }`);
   }
+}
+
+async function getNextVisitorCount() {
+  const key = 'visitor-count';
+  // Make sure the key exists
+  await kv
+    .atomic()
+    .check({ key: [ key ], versionstamp: null })
+    .set([ key ], new Deno.KvU64(0n))
+    .commit();
+
+  // Increment the count
+  await kv
+    .atomic()
+    .sum([ key ], 1n)
+    .commit();
+
+  // Get the count, unwrapping the KvU64 value
+  return (await kv.get([ key ])).value.value;
 }
