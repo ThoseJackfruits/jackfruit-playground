@@ -5,7 +5,7 @@
       "**/node_modules"
     ],
     "include": [],
-    "entrypoint": "backend/src/main.mjs"
+    "entrypoint": "backend/src/index.mjs"
   },
   "imports": {
     "@std/path": "jsr:@std/path@^1.0.8"
@@ -14,7 +14,7 @@
     "include": [ "backend/src" ]
   },
   "tasks": {
-    "start": "deno run --allow-net --allow-read --allow-write --unstable-kv backend/src/main.mjs",
-    "watch": "deno run --allow-net --allow-read --allow-write --unstable-kv --watch=backend/ backend/src/main.mjs"
+    "start": "deno run --allow-env --allow-net --allow-read --allow-write --unstable-kv backend/src/index.mjs",
+    "watch": "deno run --allow-env --allow-net --allow-read --allow-write --unstable-kv --watch=backend/ backend/src/index.mjs"
   }
 }

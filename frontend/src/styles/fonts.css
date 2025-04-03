@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Oi&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Martian+Mono:wdth,wght@87.5,100..500&display=swap');
+
+:root {
+  --jp-font-face-display: 'Martian Mono', monospace;
+  --jp-font-face-header: 'Oi', cursive;
+  --jp-font-optical-sizing-display: auto;
+  --jp-font-size-display: 1.5rem;
+  --jp-font-size-nav: 2rem;
+  --jp-font-style-display: normal;
+  --jp-font-variation-settings-display: "wdth" 87.5;
+  --jp-font-weight-display: 200;
+  --jp-font-weight-header: 400;
+
+  font-family: var(--jp-font-face-display);
+  font-optical-sizing: var(--jp-font-optical-sizing-display);
+  font-style: var(--jp-font-style-display);
+  font-weight: var(--jp-font-weight-display);
+  font-variation-settings: var(--jp-font-variation-settings-display);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--jp-font-face-header);
+  font-weight: var(--jp-font-weight-header);
+}
