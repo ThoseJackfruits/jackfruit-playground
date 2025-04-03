@@ -5,7 +5,8 @@
       "**/node_modules"
     ],
     "include": [],
-    "entrypoint": "backend/src/index.mjs"
+    "entrypoint": "backend/src/index.mjs",
+    "main": "backend/src/index.mjs"
   },
   "imports": {
     "@std/path": "jsr:@std/path@^1.0.8"
