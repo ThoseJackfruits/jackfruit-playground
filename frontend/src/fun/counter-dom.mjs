@@ -25,7 +25,7 @@ class CounterDOMElement extends HTMLElement {
   // CustomElement
   connectedCallback() {
     this.innerHTML = '';
-    addEventListener('counter-change', this.handleCounterChange);
+    addEventListener('ws-message-counter', this.handleCounterChange);
     this.render();
     (async () => {
       try {
@@ -42,7 +42,7 @@ class CounterDOMElement extends HTMLElement {
 
   disconnectedCallback() {
     this.querySelector('button')?.removeEventListener('click', this.handleClick);
-    removeEventListener('counter-change', this.handleCounterChange);
+    removeEventListener('ws-message-counter', this.handleCounterChange);
   }
 
   // CustomElement
@@ -57,12 +57,6 @@ class CounterDOMElement extends HTMLElement {
       this.updating = true;
       const response = await fetch('/api/counter', { method: 'PUT', });
       const { value } = await response.json();
-      dispatchEvent(new CustomEvent('counter-change', {
-        detail: {
-          count: value,
-          source: this
-        }
-      }));
       this.count = value;
     } finally {
       this.updating = false;
@@ -70,8 +64,7 @@ class CounterDOMElement extends HTMLElement {
   };
 
   handleCounterChange = (event) => {
-    if (event.detail.source !== this)
-      this.count = event.detail.count;
+    this.count = event.detail.data.count;
   }
 
   // RENDER ////////////////////////////////////////////////////////////////////

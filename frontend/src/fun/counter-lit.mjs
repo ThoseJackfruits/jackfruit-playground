@@ -39,7 +39,7 @@ class CounterLitElement extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    addEventListener('counter-change', this.handleCounterChange);
+    addEventListener('ws-message-counter', this.handleCounterChange);
     (async () => {
       try {
         this.updating = true;
@@ -54,7 +54,7 @@ class CounterLitElement extends LitElement {
   }
 
   disconnectedCallback() {
-    removeEventListener('counter-change', this.handleCounterChange);
+    removeEventListener('ws-message-counter', this.handleCounterChange);
     super.disconnectedCallback();
   }
 
@@ -65,19 +65,14 @@ class CounterLitElement extends LitElement {
       this.updating = true;
       const response = await fetch('/api/counter', { method: 'PUT', });
       const { value } = await response.json();
-      dispatchEvent(new CustomEvent('counter-change', { detail: {
-        count: value,
-        source: this
-      } }));
-      this.count = BigInt(value);
+      this.count = value;
     } finally {
       this.updating = false;
     }
   }
 
   handleCounterChange = (event) => {
-    if (event.detail.source !== this)
-      this.count = event.detail.count;
+    this.count = event.detail.data.count;
   }
 
   // RENDER ////////////////////////////////////////////////////////////////////
