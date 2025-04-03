@@ -1,11 +1,6 @@
 import * as path from 'jsr:@std/path';
 import handleAPIRequest from './handle-api-request.mjs';
-
-/** @type {Deno.Kv} */
-const kv = await Deno.env.get('DENO_DEPLOYMENT_ID')
-  ? await Deno.openKv() // Use Deno Deploy's KV store
-  : await Deno.openKv("./local.db");
-
+import { kv } from './kv.mjs';
 Deno.serve(async req => {
   const url = new URL(req.url);
   const { pathname } = url;
@@ -58,20 +53,20 @@ function getContentType(extension) {
 }
 
 async function getNextVisitorCount() {
-  const key = 'visitor-count';
+  const key = [ 'visitor-count' ];
   // Make sure the key exists
   await kv
     .atomic()
-    .check({ key: [ key ], versionstamp: null })
-    .set([ key ], new Deno.KvU64(0n))
+    .check({ key, versionstamp: null })
+    .set(key, new Deno.KvU64(0n))
     .commit();
 
   // Increment the count
   await kv
     .atomic()
-    .sum([ key ], 1n)
+    .sum(key, 1n)
     .commit();
 
   // Get the count, unwrapping the KvU64 value
-  return (await kv.get([ key ])).value.value;
+  return (await kv.get(key)).value.value;
 }

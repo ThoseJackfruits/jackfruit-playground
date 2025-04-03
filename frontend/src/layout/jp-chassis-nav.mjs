@@ -26,17 +26,22 @@ class JPChassisNavElement extends LitElement {
 
     a:link.in {
       text-decoration: underline;
+      text-decoration-color: var(--jp-color-primary);
       text-underline-position: from-font;
-      text-underline-offset: from-font;
-      text-decoration-thickness: from-font;
+      text-underline-offset: calc(var(--jp-common-padding) / 4);
+      text-decoration-thickness: calc(var(--jp-common-padding) / 4);
     }
 
     a:link:hover {
       color: var(--jp-color-primary);
     }
 
-    a:visited {
+    a:visited:not(:hover) {
       color: var(--jp-color-text);
+    }
+
+    a:visited:hover {
+      color: var(--jp-color-primary);
     }
 
     a:link:focus-visible {
@@ -68,8 +73,8 @@ class JPChassisNavElement extends LitElement {
   render() {
     return html`
       <nav>
-        <a ?in=${ this.currentRoute === '/' } href="/">Home</a>
-        <a ?in=${ this.currentRoute === '/about' } href="/about">About</a>
+        <a class="${ !this.currentRoute || this.currentRoute === '/' ? 'in' : '' }" href="/">Home</a>
+        <a class="${ this.currentRoute === '/about' ? 'in' : '' }" href="/about">About</a>
         <div></div>
       </nav>
     `;

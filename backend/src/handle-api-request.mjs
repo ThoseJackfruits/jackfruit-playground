@@ -2,17 +2,19 @@ import routes from './api-routes/index.mjs';
 
 /**
  * 
- * @param {Request} req 
+ * @param {Request} request 
  */
-export default async function handleAPIRequest(req) {
-  const url = new URL(req.url);
+export default async function handleAPIRequest(request) {
+  const url = new URL(request.url);
   const { pathname } = url;
 
-  for (let route of routes) {
-    if (route.pathname === pathname) {
-      return await route.handle(req);
-    }
-  }
+  let path = routes[pathname];
+  if (!path)
+    return new Response("Not found", { status: 404 });
 
-  return new Response("Not found", { status: 404 });
+  let method = path[request.method];
+  if (!method)
+    return new Response("Not found", { status: 404 });
+
+  return await method.handle({ request });
 }

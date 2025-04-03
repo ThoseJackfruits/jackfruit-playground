@@ -1,12 +1,23 @@
 class CounterDOMElement extends HTMLElement {
-  static observedAttributes = [ 'count' ];
+  static observedAttributes = [ 'count', 'updating' ];
 
   get count() {
-    return +(this.getAttribute('count') ?? '0');
+    return this.getAttribute('count');
   } 
 
   set count(value) {
     this.setAttribute('count', `${ value }`);
+  }
+
+  get updating() {
+    return this.hasAttribute('updating');
+  }
+
+  set updating(value) {
+    if (value)
+      this.setAttribute('updating', '');
+    else
+      this.removeAttribute('updating');
   }
 
   // LIFECYCLE /////////////////////////////////////////////////////////////////
@@ -14,23 +25,54 @@ class CounterDOMElement extends HTMLElement {
   // CustomElement
   connectedCallback() {
     this.innerHTML = '';
+    addEventListener('counter-change', this.handleCounterChange);
     this.render();
+    (async () => {
+      try {
+        this.updating = true;
+        const response = await fetch('/api/counter', { method: 'GET', });
+        const { value } = await response.json();
+        if (this.isConnected)
+          this.count = value;
+      } finally {
+        this.updating = false;
+      }
+    })();
   }
 
   disconnectedCallback() {
     this.querySelector('button')?.removeEventListener('click', this.handleClick);
+    removeEventListener('counter-change', this.handleCounterChange);
   }
 
   // CustomElement
-  attributeChangedCallback() {
+  attributeChangedCallback(attr, oldValue, newValue) {
     this.render();
   }
 
   // EVENT HANDLERS ////////////////////////////////////////////////////////////
 
-  handleClick = () => {
-    this.count++;
+  handleClick = async () => {
+    try {
+      this.updating = true;
+      const response = await fetch('/api/counter', { method: 'PUT', });
+      const { value } = await response.json();
+      dispatchEvent(new CustomEvent('counter-change', {
+        detail: {
+          count: value,
+          source: this
+        }
+      }));
+      this.count = value;
+    } finally {
+      this.updating = false;
+    }
   };
+
+  handleCounterChange = (event) => {
+    if (event.detail.source !== this)
+      this.count = event.detail.count;
+  }
 
   // RENDER ////////////////////////////////////////////////////////////////////
 
@@ -54,13 +96,18 @@ class CounterDOMElement extends HTMLElement {
       this.appendChild(button);
     }
 
+    if (this.updating)
+      button.setAttribute('disabled', '');
+    else
+      button.removeAttribute('disabled');
+
     if (!paragraph) {
       paragraph = document.createElement('p');
       paragraph.id = 'count';
       this.appendChild(paragraph);
     }
 
-    paragraph.textContent = `Count: ${ this.count }`;
+    paragraph.textContent = `Count: ${ this.count ?? '' }`;
   }
 }
 

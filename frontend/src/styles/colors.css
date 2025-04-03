@@ -1,9 +1,21 @@
 :root {
-  --jp-color-primary: #aaaa00;
+  --jp-color-primary: #999900;
+  --jp-color-accent: #402070;
   --jp-color-text: #000000;
   --jp-color-bg-0: #ffffff;
-  --jp-color-bg-1: #fbfbfb;
-  --jp-color-bg-2: #f7f7f7;
-  --jp-color-bg-3: #f3f3f3;
-  --jp-color-bg-4: #efefef;
+  --jp-color-bg-1: #f7f7f7;
+  --jp-color-bg-2: #f0f0f0;
+  --jp-color-bg-3: #e7e7e7;
+  --jp-color-bg-4: #e0e0e0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --jp-color-text: #fafafa;
+    --jp-color-bg-0: #111111;
+    --jp-color-bg-1: #181818;
+    --jp-color-bg-2: #222222;
+    --jp-color-bg-3: #282828;
+    --jp-color-bg-4: #333333;
+  }
 }
