@@ -6,6 +6,6 @@ const key = Object.freeze([ 'counter' ]);
 for await (let [ entry ] of kv.watch([ key ])) {
   webSockets.broadcastOutgoing({
     name: 'counter',
-    count: entry.value.toString()
+    count: entry.value?.toString() ?? '0'
   });
 }
