@@ -29,8 +29,7 @@ class JPChassisMainElement extends LitElement {
   }
 
   render() {
-    // Render different content based on the current route
-    switch(this.currentRoute) {
+    switch (this.currentRoute) {
       case '/':
         return html`<div>
           <counter-dom></counter-dom>
