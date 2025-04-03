@@ -26,14 +26,14 @@ class JPChassisNavElement extends LitElement {
 
     a:link.in {
       text-decoration: underline;
-      text-decoration-color: var(--jp-color-primary);
       text-underline-position: from-font;
       text-underline-offset: calc(var(--jp-common-padding) / 4);
-      text-decoration-thickness: calc(var(--jp-common-padding) / 4);
+      text-decoration-thickness: calc(var(--jp-common-padding) / 3);
     }
 
     a:link:hover {
       color: var(--jp-color-primary);
+      text-decoration-color: var(--jp-color-primary);
     }
 
     a:visited:not(:hover) {
