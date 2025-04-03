@@ -1,4 +1,5 @@
-import * as path from "jsr:@std/path";
+import * as path from 'jsr:@std/path';
+import handleAPIRequest from './handle-api-request.mjs';
 
 /** @type {Deno.Kv} */
 const kv = await Deno.env.get('DENO_DEPLOYMENT_ID')
@@ -13,15 +14,23 @@ Deno.serve(async req => {
   const extension = path.extname(localPath);
 
   if (pathname.startsWith('/api/')) {
-    return new Response("Not implemented", { status: 501 });
+    return await handleAPIRequest(req);
   }
 
   if (pathname.startsWith('/frontend/src/')) {
-    return new Response(await Deno.readFile(localPath, { signal }), {
-      headers: {
-        "Content-Type": getContentType(extension)
-      },
-    });
+    try {
+      return new Response(await Deno.readFile(localPath, { signal }), {
+        headers: {
+          "Content-Type": getContentType(extension)
+        },
+      });
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        return new Response("Not found", { status: 404 });
+      }
+
+      throw error;
+    }
   }
 
   // Init the visitor count to 0 if the key doesn't exist
@@ -44,7 +53,7 @@ function getContentType(extension) {
     case ".html":
       return "text/html";
     default:
-      throw new Error(`Serving unknown file extension: ${ ext }`);
+      throw new Error(`Serving unknown file extension: ${ extension }`);
   }
 }
 
