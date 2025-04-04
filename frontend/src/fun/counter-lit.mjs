@@ -2,8 +2,7 @@ import { css, LitElement, html } from 'lit';
 
 class CounterLitElement extends LitElement {
   static properties = {
-    count: { type: BigInt },
-    updating: { type: Boolean }
+    count: { type: BigInt }
   };
 
   static styles = css`
@@ -12,10 +11,12 @@ class CounterLitElement extends LitElement {
       padding: 0 var(--jp-common-padding) var(--jp-common-padding);
       border: var(--jp-common-border-width) solid var(--jp-color-accent);
       border-radius: var(--jp-common-border-radius);
+      width: max-content;
     }
 
     button {
       all: unset;
+      font-size: 1.5rem;
       background-color: var(--jp-color-bg-1);
       color: var(--jp-color-text);
       padding: calc(var(--jp-common-padding) / 2) var(--jp-common-padding);
@@ -31,8 +32,15 @@ class CounterLitElement extends LitElement {
       background-color: var(--jp-color-bg-2);
     }
 
-    p {
-      margin-bottom: 0;
+    #count-value {
+      font-size: 3rem;
+      font-weight: 100;
+    }
+
+    #count {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
     }
   `;
 
@@ -41,17 +49,7 @@ class CounterLitElement extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     addEventListener('ws-message-counter', this.handleCounterChange);
-    (async () => {
-      try {
-        this.updating = true;
-        const response = await fetch('/api/counter', { method: 'GET', });
-        const { value } = await response.json();
-        if (this.isConnected)
-          this.count = BigInt(value);
-      } finally {
-        this.updating = false;
-      }
-    })();
+    this.loadCount(); // purposeful no-await
   }
 
   disconnectedCallback() {
@@ -59,17 +57,32 @@ class CounterLitElement extends LitElement {
     super.disconnectedCallback();
   }
 
+  // API ///////////////////////////////////////////////////////////////////////
+
+  async incrementCount() {
+    const response = await fetch('/api/counter', { method: 'PUT', });
+    const { value } = await response.json();
+    this.count = value;
+  }
+
+  async loadCount() {
+    const response = await fetch('/api/counter', { method: 'GET', });
+    const { value } = await response.json();
+    if (this.isConnected)
+      this.count = BigInt(value);
+  }
+
   // EVENT HANDLERS ////////////////////////////////////////////////////////////
 
   async handleClick() {
-    try {
-      this.updating = true;
-      const response = await fetch('/api/counter', { method: 'PUT', });
-      const { value } = await response.json();
-      this.count = value;
-    } finally {
-      this.updating = false;
-    }
+    await this.incrementCount();
+  }
+
+  // Make rapid clicks work better on touch devices
+  handleTouchStart = async event => {
+    // Prevent the touch from triggering a click event
+    event.preventDefault();
+    await this.incrementCount();
   }
 
   handleCounterChange = (event) => {
@@ -81,15 +94,17 @@ class CounterLitElement extends LitElement {
   render() {
     return html`
       <h2>Counter Lit</h2>
+      <p id="count">
+        <span>Count:</span>
+        <span id="count-value">${
+          this.count == null ? '' : this.count
+        }</span></p>
       <button
         id="button"
         @click=${ this.handleClick }
-        ?disabled=${ this.updating }>
-        Increment
+        @touchstart=${ this.handleTouchStart }>
+        Increment${ '!'.repeat(this.updating) }
       </button>
-      <p id="count">Count: ${
-        this.count == null ? '' : this.count
-      }</p>
     `;
   }
 }
