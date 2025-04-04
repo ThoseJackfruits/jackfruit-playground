@@ -7,7 +7,8 @@ class CounterLitElement extends LitElement {
 
   static styles = css`
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
       padding: 0 var(--jp-common-padding) var(--jp-common-padding);
       border: var(--jp-common-border-width) solid var(--jp-color-accent);
       border-radius: var(--jp-common-border-radius);
@@ -16,6 +17,7 @@ class CounterLitElement extends LitElement {
 
     button {
       all: unset;
+      align-self: flex-end;
       font-size: 1.5rem;
       background-color: var(--jp-color-bg-1);
       color: var(--jp-color-text);
@@ -32,6 +34,10 @@ class CounterLitElement extends LitElement {
       background-color: var(--jp-color-bg-2);
     }
 
+    #count-label {
+      font-weight: 600;
+    }
+
     #count-value {
       font-size: 3rem;
       font-weight: 100;
@@ -39,6 +45,7 @@ class CounterLitElement extends LitElement {
 
     #count {
       display: flex;
+      gap: calc(var(--jp-common-padding) / 2);
       justify-content: space-between;
       align-items: baseline;
     }
@@ -95,7 +102,7 @@ class CounterLitElement extends LitElement {
     return html`
       <h2>Counter Lit</h2>
       <p id="count">
-        <span>Count:</span>
+        <span id="count-label">Count:</span>
         <span id="count-value">${
           this.count == null ? '' : this.count
         }</span></p>
@@ -103,7 +110,7 @@ class CounterLitElement extends LitElement {
         id="button"
         @click=${ this.handleClick }
         @touchstart=${ this.handleTouchStart }>
-        Increment${ '!'.repeat(this.updating) }
+        Increment
       </button>
     `;
   }
