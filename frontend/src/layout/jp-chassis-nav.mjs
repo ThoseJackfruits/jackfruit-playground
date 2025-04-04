@@ -19,7 +19,7 @@ class JPChassisNavElement extends LitElement {
     }
 
     a:link {
-      color: inherit;
+      color: var(--jp-color-text);
       padding: calc(var(--jp-common-padding) / 2);
       text-decoration: none;
     }

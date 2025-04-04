@@ -11,6 +11,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+  --jp-color-accent: #A060F0;
     --jp-color-text: #fafafa;
     --jp-color-bg-0: #111111;
     --jp-color-bg-1: #181818;
@@ -18,4 +19,9 @@
     --jp-color-bg-3: #282828;
     --jp-color-bg-4: #333333;
   }
+}
+
+html {
+  color: var(--jp-color-text);
+  background-color: var(--jp-color-bg-0);
 }

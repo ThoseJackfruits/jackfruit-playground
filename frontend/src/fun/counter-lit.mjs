@@ -20,6 +20,7 @@ class CounterLitElement extends LitElement {
       color: var(--jp-color-text);
       padding: calc(var(--jp-common-padding) / 2) var(--jp-common-padding);
       border-radius: var(--jp-common-border-radius);
+      border: var(--jp-common-border-width) solid var(--jp-color-accent);
     }
 
     button:disabled {
