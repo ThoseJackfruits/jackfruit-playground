@@ -12,12 +12,12 @@ class WebSockets {
       return;
     }
 
-    this.dispatchEvent(new CustomEvent('message', {
+    dispatchEvent(new CustomEvent('ws-message', {
       detail: { data }
     }));
 
     if (data.name) {
-      this.dispatchEvent(new CustomEvent(`message-${ data.name }`, {
+      dispatchEvent(new CustomEvent(`ws-message-${ data.name }`, {
         detail: { data }
       }));
     }

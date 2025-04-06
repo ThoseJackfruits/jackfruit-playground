@@ -1,4 +1,4 @@
-import webSockets from './web-sockets.mjs';
+import webSockets from './web-sockets/web-sockets.mjs';
 
 export default function handleWebSocketUpgradeRequest(req) {
   // Create a WebSocket connection
@@ -10,19 +10,8 @@ export default function handleWebSocketUpgradeRequest(req) {
   });
 
   socket.addEventListener('message', (event) => {
-    let data;
-
-    try {
-      data = JSON.parse(event.data);
-    } catch (error) {
-      console.error("Error parsing message:", error);
-      return;
-    }
-
-    console.log("WebSocket message:", data);
-
-    if (data.name) {
-      webSockets.broadcastOutgoing(data.name, data);
+    if (event.data) {
+      webSockets.broadcastIncoming(event.data);
     }
   });
 

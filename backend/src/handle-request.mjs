@@ -1,7 +1,7 @@
 import * as path from 'jsr:@std/path';
 import handleAPIRequest from './handle-api-request.mjs';
 import handleWebSocketUpgradeRequest from './handle-web-socket-upgrade-request.mjs';
-import { kv } from './kv.mjs';
+import { kv } from './store/index.mjs';
 Deno.serve(async req => {
   if (req.headers.get('upgrade') === 'websocket') {
     return await handleWebSocketUpgradeRequest(req);

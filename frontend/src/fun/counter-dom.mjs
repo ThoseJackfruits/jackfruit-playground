@@ -40,6 +40,7 @@ class CounterDOMElement extends HTMLElement {
     })();
   }
 
+  // CustomElement
   disconnectedCallback() {
     this.querySelector('button')?.removeEventListener('click', this.handleClick);
     removeEventListener('ws-message-counter', this.handleCounterChange);

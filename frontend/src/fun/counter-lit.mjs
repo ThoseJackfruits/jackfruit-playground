@@ -1,5 +1,5 @@
 import { css, LitElement, html } from 'lit';
-
+import { sendMessage } from '../web-socket.mjs';
 class CounterLitElement extends LitElement {
   static properties = {
     count: { type: BigInt }
@@ -67,9 +67,7 @@ class CounterLitElement extends LitElement {
   // API ///////////////////////////////////////////////////////////////////////
 
   async incrementCount() {
-    const response = await fetch('/api/counter', { method: 'PUT', });
-    const { value } = await response.json();
-    this.count = value;
+    sendMessage({ name: 'counter-increment' });
   }
 
   async loadCount() {
