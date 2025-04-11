@@ -2,26 +2,38 @@
   --jp-color-primary: #999900;
   --jp-color-accent: #402070;
   --jp-color-text: #000000;
-  --jp-color-bg-0: #ffffff;
-  --jp-color-bg-1: #f7f7f7;
-  --jp-color-bg-2: #f0f0f0;
-  --jp-color-bg-3: #e7e7e7;
-  --jp-color-bg-4: #e0e0e0;
+  --jp-color-bg-0: #fffff0;
+  --jp-color-bg-1: #f7f7f0;
+  --jp-color-bg-2: #f0f0e0;
+  --jp-color-bg-3: #e7e7e0;
+  --jp-color-bg-4: #e0e0d0;
+}
+
+html {
+  color: var(--jp-color-text);
+  background-color: var(--jp-color-bg-1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --jp-color-accent: #A060F0;
     --jp-color-text: #fafafa;
-    --jp-color-bg-0: #111111;
-    --jp-color-bg-1: #181818;
-    --jp-color-bg-2: #222222;
-    --jp-color-bg-3: #282828;
-    --jp-color-bg-4: #333333;
+    --jp-color-bg-0: #111101;
+    --jp-color-bg-1: #181810;
+    --jp-color-bg-2: #222202;
+    --jp-color-bg-3: #282818;
+    --jp-color-bg-4: #333323;
   }
 }
 
-html {
-  color: var(--jp-color-text);
-  background-color: var(--jp-color-bg-0);
+@media (prefers-contrast: more) {
+  html {
+    background-color: var(--jp-color-bg-0);
+  }
+}
+
+@media (prefers-color-scheme: dark) and (prefers-contrast: more) {
+  :root {
+    --jp-color-text: #ffffff;
+  }
 }
