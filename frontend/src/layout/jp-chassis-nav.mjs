@@ -76,7 +76,13 @@ class JPChassisNavElement extends LitElement {
     this.currentRoute = event.detail.path;
     await this.updateComplete;
     this.shadowRoot.querySelector('a.in')?.scrollIntoView({
-      behavior: 'smooth'
+      behavior: 'smooth',
+      // Make sure we're snapping the viewport vertically to the top of the
+      // scroll container, rather than lining up the top of the viewport with
+      // the top of the target anchor, which could cause the page to scroll
+      // down slightly.
+      block: 'end',
+      inline: 'nearest'
     });
   };
 
