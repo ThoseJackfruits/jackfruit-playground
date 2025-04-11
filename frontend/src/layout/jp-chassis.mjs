@@ -1,8 +1,16 @@
-import { LitElement, html } from 'lit';
+import { css, LitElement, html } from 'lit';
 import '/frontend/src/layout/jp-chassis-nav.mjs';
 import '/frontend/src/layout/jp-chassis-main.mjs';
 
 class JPChassisElement extends LitElement {
+  static styles = css`
+    :host {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+  `;
+
   constructor() {
     super();
   }

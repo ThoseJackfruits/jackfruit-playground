@@ -9,6 +9,10 @@ class JPChassisNavElement extends LitElement {
   };
 
   static styles = css`
+    :host {
+      display: block;
+    }
+
     nav {
       display: flex;
       flex-direction: row;
@@ -16,6 +20,9 @@ class JPChassisNavElement extends LitElement {
       font-size: var(--jp-font-size-nav);
       gap: var(--jp-common-padding);
       padding: calc(var(--jp-common-padding) / 2);
+      margin-bottom: calc(var(--jp-common-padding) / 2);
+      scrollbar-width: thin;
+      overflow-x: auto;
     }
 
     a:link {
@@ -54,6 +61,7 @@ class JPChassisNavElement extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.currentRoute = window.location.pathname;
     addEventListener('route-changed', this.handleRouteChange);
   }
 
@@ -64,8 +72,12 @@ class JPChassisNavElement extends LitElement {
 
   // EVENT HANDLERS ////////////////////////////////////////////////////////////
 
-  handleRouteChange = event => {
+  handleRouteChange = async event => {
     this.currentRoute = event.detail.path;
+    await this.updateComplete;
+    this.shadowRoot.querySelector('a.in')?.scrollIntoView({
+      behavior: 'smooth'
+    });
   };
 
   // RENDER ////////////////////////////////////////////////////////////////////
@@ -73,11 +85,16 @@ class JPChassisNavElement extends LitElement {
   render() {
     return html`
       <nav>
-        <a class="${ !this.currentRoute || this.currentRoute === '/' ? 'in' : '' }" href="/">Home</a>
-        <a class="${ this.currentRoute === '/about' ? 'in' : '' }" href="/about">About</a>
+        <a class="${ this.renderClass('/') }" href="/">Home</a>
+        <a class="${ this.renderClass('/ristet') }" href="/ristet">Ristet</a>
+        <a class="${ this.renderClass('/about') }" href="/about">About</a>
         <div></div>
       </nav>
     `;
+  }
+
+  renderClass(path) {
+    return this.currentRoute === path ? 'in' : '';
   }
 }
 

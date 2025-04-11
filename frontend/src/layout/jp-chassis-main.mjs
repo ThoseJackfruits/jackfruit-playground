@@ -1,6 +1,4 @@
 import { css, LitElement, html } from 'lit';
-import '/frontend/src/fun/counter-dom.mjs';
-import '/frontend/src/fun/counter-lit.mjs';
 
 class JPChassisMainElement extends LitElement {
   static properties = {
@@ -14,7 +12,7 @@ class JPChassisMainElement extends LitElement {
 
     div {
       padding: 0 var(--jp-common-padding);
-      max-width: var(--jp-common-max-width);
+      max-width: min(var(--jp-common-max-width), 100%);
     }
   `;
 
@@ -28,15 +26,31 @@ class JPChassisMainElement extends LitElement {
     });
   }
 
+  willUpdate() {
+    switch (this.currentRoute) {
+      case '/':
+        import('/frontend/src/fun/jp-counter-dom.mjs');
+        import('/frontend/src/fun/jp-counter-lit.mjs');
+        break;
+      case '/ristet':
+        import('/frontend/src/fun/jp-ristet.mjs');
+        break;
+    }
+  }
+
   render() {
     switch (this.currentRoute) {
       case '/':
         return html`<div>
-          <counter-dom></counter-dom>
-          <counter-lit></counter-lit>
+          <jp-counter-dom></jp-counter-dom>
+          <jp-counter-lit></jp-counter-lit>
         </div>`;
       case '/about':
         return html`<div>About Page Content</div>`;
+      case '/ristet':
+        return html`<div>
+          <jp-ristet></jp-ristet>
+        </div>`;
       default:
         return html`<div>404 - Page not found</div>`;
     }

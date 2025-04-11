@@ -1,6 +1,7 @@
 import { css, LitElement, html } from 'lit';
 import { sendMessage } from '../web-socket.mjs';
-class CounterLitElement extends LitElement {
+
+class JPCounterLitElement extends LitElement {
   static properties = {
     count: { type: BigInt }
   };
@@ -114,4 +115,4 @@ class CounterLitElement extends LitElement {
   }
 }
 
-customElements.define('counter-lit', CounterLitElement);
+customElements.define('jp-counter-lit', JPCounterLitElement);

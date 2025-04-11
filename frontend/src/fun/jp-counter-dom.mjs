@@ -1,5 +1,7 @@
-class CounterDOMElement extends HTMLElement {
-  static observedAttributes = [ 'count', 'updating' ];
+import { sendMessage } from '../web-socket.mjs';
+
+class JPCounterDOMElement extends HTMLElement {
+  static observedAttributes = [ 'count' ];
 
   get count() {
     return this.getAttribute('count');
@@ -7,17 +9,6 @@ class CounterDOMElement extends HTMLElement {
 
   set count(value) {
     this.setAttribute('count', `${ value }`);
-  }
-
-  get updating() {
-    return this.hasAttribute('updating');
-  }
-
-  set updating(value) {
-    if (value)
-      this.setAttribute('updating', '');
-    else
-      this.removeAttribute('updating');
   }
 
   // LIFECYCLE /////////////////////////////////////////////////////////////////
@@ -28,15 +19,10 @@ class CounterDOMElement extends HTMLElement {
     addEventListener('ws-message-counter', this.handleCounterChange);
     this.render();
     (async () => {
-      try {
-        this.updating = true;
-        const response = await fetch('/api/counter', { method: 'GET', });
-        const { value } = await response.json();
-        if (this.isConnected)
-          this.count = value;
-      } finally {
-        this.updating = false;
-      }
+      const response = await fetch('/api/counter', { method: 'GET', });
+      const { value } = await response.json();
+      if (this.isConnected)
+        this.count = value;
     })();
   }
 
@@ -54,14 +40,7 @@ class CounterDOMElement extends HTMLElement {
   // EVENT HANDLERS ////////////////////////////////////////////////////////////
 
   handleClick = async () => {
-    try {
-      this.updating = true;
-      const response = await fetch('/api/counter', { method: 'PUT', });
-      const { value } = await response.json();
-      this.count = value;
-    } finally {
-      this.updating = false;
-    }
+    sendMessage({ name: 'counter-increment' });
   };
 
   handleCounterChange = (event) => {
@@ -90,11 +69,6 @@ class CounterDOMElement extends HTMLElement {
       this.appendChild(button);
     }
 
-    if (this.updating)
-      button.setAttribute('disabled', '');
-    else
-      button.removeAttribute('disabled');
-
     if (!paragraph) {
       paragraph = document.createElement('p');
       paragraph.id = 'count';
@@ -105,4 +79,4 @@ class CounterDOMElement extends HTMLElement {
   }
 }
 
-customElements.define('counter-dom', CounterDOMElement);
+customElements.define('jp-counter-dom', JPCounterDOMElement);

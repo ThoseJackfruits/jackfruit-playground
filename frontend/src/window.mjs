@@ -1,3 +1,5 @@
+// Intercept clicks that should navigate to a new page within the SPA, rather
+// than open a new tab/window.
 document.addEventListener('click', (event) => {
   let composedPath = event.composedPath();
   let target = composedPath.find(element =>
