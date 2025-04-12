@@ -18,6 +18,12 @@ const STATE_TRANSITIONS = Object.freeze({
   [STATES.GAME_OVER]: [ STATES.PLAYING ],
 });
 
+const DIRECTION = Object.freeze({
+  DOWN: 'down',
+  LEFT: 'left',
+  RIGHT: 'right'
+});
+
 class JPRistetElement extends LitElement {
   static properties = {
     gameState:     {
@@ -283,10 +289,56 @@ class JPRistetElement extends LitElement {
       yield i;
   }
 
+  movementCommit(movement, gameData=this.gameData) {
+    console.error('[ristet] movementcommit', movement);
+
+    if (!movement || movement instanceof MovementError)
+      return;
+
+    let { currentPiece } = gameData;
+    if (!currentPiece)
+      return;
+
+    this.gameData = {
+      ...gameData,
+      currentPiece: {
+        ...currentPiece,
+        pos: movement.pos,
+      },
+    };
+  }
+
   movementSimulate(direction) {
+    let { currentPiece } = this.gameData;
+    if (!currentPiece) {
+      return null;
+    }
+
+    let { pos } = currentPiece;
+    let newPos = { ...pos };
+
+    switch (direction) {
+      case DIRECTION.DOWN:
+        newPos.y += 1;
+        break;
+      case DIRECTION.LEFT:
+        newPos.x -= 1;
+        break;
+      case DIRECTION.RIGHT:
+        newPos.x += 1;
+        break;
+    }
+
+    if (newPos.x < 0)
+      return new MovementError();
+
+    if (newPos.x + pieceWidth(currentPiece) > COLUMNS)
+      return null;
+
+    // TODO check buildup for intersections
+
     return {
-      direction,
-      distance: 1,
+      pos: newPos
     };
   }
 
@@ -308,6 +360,7 @@ class JPRistetElement extends LitElement {
       currentPiece: this.gameData.previewPiece && {
         ...this.gameData.previewPiece,
         pos: {
+          // center horizontally
           x: Math.floor((COLUMNS - pieceWidth(piece)) / 2),
           y: 0,
         },
@@ -335,6 +388,18 @@ class JPRistetElement extends LitElement {
         break;
       case STATES.PLAYING:
         switch (event.key) {
+          case 'ArrowDown':
+            event.preventDefault();
+            this.movementCommit(this.movementSimulate(DIRECTION.DOWN));
+            break;
+          case 'ArrowLeft':
+            event.preventDefault();
+            this.movementCommit(this.movementSimulate(DIRECTION.LEFT));
+            break;
+          case 'ArrowRight':
+            event.preventDefault();
+            this.movementCommit(this.movementSimulate(DIRECTION.RIGHT));
+            break;
           case ' ':
             event.preventDefault();
             this.gameState = STATES.PAUSED;
@@ -442,7 +507,7 @@ class JPRistetElement extends LitElement {
   renderPreviewRow(previewPiece, row, y) {
     return html`
       ${ repeat(
-        padArray(row, 0, 4),
+        padArrayStart(row, 0, 4),
         (_, x) => x,
         (cell, x) => this.renderPreviewCell(previewPiece, cell, x, y)
       ) }
@@ -465,9 +530,23 @@ class JPRistetElement extends LitElement {
 
 customElements.define('jp-ristet', JPRistetElement);
 
-function * padArray(arr, padValue, length) {
+function * padArrayStart(arr, padValue, length) {
   for (let i = 0; i < length - arr.length; i++) {
     yield padValue;
   }
   yield * arr;
+}
+
+class MovementError extends Error {
+  static TYPE = Object.freeze({
+    OUT_OF_BOUNDS: 'out-of-bounds',
+    INTERSECTION: 'intersection',
+  });
+
+  static OUT_OF_BOUNDS = new MovementError(this.TYPE.OUT_OF_BOUNDS);
+  static INTERSECTION = new MovementError(this.TYPE.INTERSECTION);
+
+  constructor(type) {
+    super(type);
+  }
 }
