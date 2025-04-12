@@ -33,7 +33,7 @@ class JPChassisMainElement extends LitElement {
         import('/frontend/src/fun/jp-counter-lit.mjs');
         break;
       case '/ristet':
-        import('/frontend/src/fun/jp-ristet.mjs');
+        import('/frontend/src/fun/jp-ristet/jp-ristet.mjs');
         break;
     }
   }

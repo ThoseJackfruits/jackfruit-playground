@@ -1,58 +1,10 @@
 import { css, LitElement, html } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
+import { getPieceStreamWeighted } from './lib-pieces.mjs';
 
 const COLUMNS = 8;
 const ROWS = 16;
 
-const PIECES = Object.freeze({
-  I: {
-    shape: [
-      [ 1, 1, 1, 1 ],
-    ],
-    width: 4,
-    height: 1
-  },
-  J: {
-    shape: [
-      [ 1, 0, 0 ],
-      [ 1, 1, 1 ]
-    ],
-    width: 3,
-    height: 2
-  },
-  L: {
-    shape: [
-      [ 0, 0, 1 ],
-      [ 1, 1, 1 ]
-    ],
-    width: 3,
-    height: 2
-  },
-  O: {
-    shape: [
-      [ 1, 1 ],
-      [ 1, 1 ]
-    ],
-    width: 2,
-    height: 2
-  },
-  S: {
-    shape: [
-      [ 0, 1, 1 ],
-      [ 1, 1, 0 ]
-    ],
-    width: 3,
-    height: 2
-  },
-  Z: {
-    shape: [
-      [ 1, 1, 0 ],
-      [ 0, 1, 1 ]
-    ],
-    width: 3,
-    height: 2
-  }
-});
 
 const STATES = Object.freeze({
   PLAYING: 'playing',
@@ -197,7 +149,7 @@ class JPRistetElement extends LitElement {
     }
   `;
 
-  previewStream = this.getPieceStreamWeighted();
+  previewStream = getPieceStreamWeighted();
   tickRate = 1000;
   tickTimeout = null;
 
@@ -240,7 +192,6 @@ class JPRistetElement extends LitElement {
         !STATE_TRANSITIONS[oldGameState].includes(this.gameState);
 
       if (invalidTransition) {
-        debugger;
         console.error(
           `Invalid state transition: ${ oldGameState } → ${ this.gameState }`,
           {
@@ -270,33 +221,6 @@ class JPRistetElement extends LitElement {
   * griderator() {
     for (let i = 0; i < COLUMNS * ROWS; i++)
       yield i;
-  }
-
-  /**
-   * Generates a stream of randomly-selected pieces, weighted by usage.
-   * @returns {IterableIterator<[string, object]>}
-   */
-  * getPieceStreamWeighted() {
-    let pieceUsages =
-      Object.fromEntries(Object.keys(PIECES).map((name) => ([ name, 1 ])));
-
-    for (let piecesPicked = 0; '⏏'; piecesPicked++) {
-      let totalUses = Object.values(pieceUsages).reduce((a, b) => a + b, 0);
-      let end;
-      let ranges = Object.entries(pieceUsages).reduce((a, [ name, uses ]) => {
-        if (!end)
-          end = 1 / (uses / totalUses);
-        else
-          end += 1 / (uses / totalUses);
-        a.push({ name, end });
-        return a;
-      }, []);
-      let point = Math.random() * totalUses;
-      let { name } = ranges.find(({ end }) => point < end) ?? ranges.at(-1);
-      let piece = PIECES[name];
-      pieceUsages[name]++;
-      yield [ name, piece ];
-    }
   }
 
   movementSimulate(direction) {
@@ -358,7 +282,6 @@ class JPRistetElement extends LitElement {
         this.scheduleNextTick();
         break;
       case STATES.PAUSED:
-        debugger;
         this.tickTimeout &&= clearTimeout(this.tickTimeout);
         break;
     }
