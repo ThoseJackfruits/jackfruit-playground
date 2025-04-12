@@ -4,48 +4,36 @@ export const PIECES = Object.freeze({
     shape: [
       [ 1, 1, 1, 1 ],
     ],
-    width: 4,
-    height: 1
   },
   J: {
     shape: [
       [ 1, 0, 0 ],
       [ 1, 1, 1 ]
     ],
-    width: 3,
-    height: 2
   },
   L: {
     shape: [
       [ 0, 0, 1 ],
       [ 1, 1, 1 ]
     ],
-    width: 3,
-    height: 2
   },
   O: {
     shape: [
       [ 1, 1 ],
       [ 1, 1 ]
     ],
-    width: 2,
-    height: 2
   },
   S: {
     shape: [
       [ 0, 1, 1 ],
       [ 1, 1, 0 ]
     ],
-    width: 3,
-    height: 2
   },
   Z: {
     shape: [
       [ 1, 1, 0 ],
       [ 0, 1, 1 ]
     ],
-    width: 3,
-    height: 2
   }
 });
 
@@ -75,4 +63,12 @@ export function * getPieceStreamWeighted() {
     pieceUsages[name]++;
     yield [ name, piece ];
   }
+}
+
+export function pieceWidth(piece) {
+  return piece.shape[0].length;
+}
+
+export function pieceHeight(piece) {
+  return piece.shape.length;
 }

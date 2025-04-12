@@ -1,10 +1,10 @@
 import { css, LitElement, html } from 'lit';
+import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { getPieceStreamWeighted } from './lib-pieces.mjs';
+import { getPieceStreamWeighted, pieceWidth } from './lib-pieces.mjs';
 
 const COLUMNS = 8;
 const ROWS = 16;
-
 
 const STATES = Object.freeze({
   PLAYING: 'playing',
@@ -20,10 +20,12 @@ const STATE_TRANSITIONS = Object.freeze({
 
 class JPRistetElement extends LitElement {
   static properties = {
-    currentPiece:  { state: true },
-    previewPiece:  { state: true },
-    gameState:     { state: true },
-    gameStateData: { state: true },
+    gameState:     {
+      attribute: 'game-state',
+      reflect: true,
+      type: String
+    },
+    gameData: { state: true },
   };
 
   static styles = css`
@@ -40,9 +42,44 @@ class JPRistetElement extends LitElement {
       overflow: hidden;
     }
 
+    #overlay:empty {
+      display: none;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    #overlay {
+      grid-area: grid;
+      font-size: 2em;
+      color: var(--jp-color-text);
+      display: flex;
+      opacity: 1;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      transition: opacity 140ms ease-out;
+    }
+
+    :host([game-state="paused"]) #grid {
+      filter: blur(6px);
+    }
+
     h2 {
       grid-area: header;
       margin: 0;
+    }
+
+    kbd {
+      all: unset;
+      box-shadow:
+        0 1px 1px rgba(0, 0, 0, 0.2),
+        0 2px 0 0 rgba(255, 255, 255, 0.7) inset;
+      border-radius: var(--jp-common-border-radius);
+      border: 1px solid var(--jp-color-accent);
+      font-family: var(--jp-font-family-mono);
+      padding: 0.1em 0.2em;
     }
 
     #grid {
@@ -51,8 +88,9 @@ class JPRistetElement extends LitElement {
       grid-area: grid;
       grid-template-columns: repeat(${ COLUMNS }, 1fr);
       grid-template-rows: repeat(${ ROWS }, 1fr);
-      max-width: 100%;
-      max-height: 100%;
+      max-width: 100vw
+      max-height: 100vh;
+      transition: filter 140ms ease-out;
       aspect-ratio: ${ COLUMNS } / ${ ROWS };
       align-items: start;
       justify-items: start;
@@ -68,6 +106,7 @@ class JPRistetElement extends LitElement {
       aspect-ratio: 4 / 3;
       align-items: start;
       justify-items: start;
+      height: fill-available;
     }
 
     .grid-cell {
@@ -107,7 +146,7 @@ class JPRistetElement extends LitElement {
     }
 
     .grid-cell.off {
-      background-color: transparent;
+      background-color: var(--jp-color-bg-4);
     }
 
     .grid-cell.c1 {
@@ -158,7 +197,7 @@ class JPRistetElement extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.gameState = STATES.PAUSED;
-    this.gameStateData = {};
+    this.gameData = {};
     this.addEventListener('click', this.handleClick);
     this.addEventListener('keydown', this.handleKeyDown);
     this.setAttribute('tabindex', '0');
@@ -171,22 +210,43 @@ class JPRistetElement extends LitElement {
     super.disconnectedCallback();
   }
 
+  getCellColorMap() {
+    let colorMap = Array.from({ length: COLUMNS },
+      () => Array.from({ length: ROWS }, () => 'off'));
+
+    let { currentPiece } = this.gameData;
+    if (!currentPiece) {
+      return colorMap;
+    }
+
+    let { pos, shape } = currentPiece;
+    for (let y = 0; y < shape.length; y++) {
+      for (let x = 0; x < shape[y].length; x++) {
+        if (shape[y][x]) {
+          colorMap[pos.x + x][pos.y + y] = currentPiece.name;
+        }
+      }
+    }
+
+    return colorMap;
+  }
+
   shouldUpdate(changes) {
     let gameStateChanged = changes.has('gameState');
-    let gameStateDataChanged = changes.has('gameStateData');
+    let gameDataChanged = changes.has('gameData');
 
-    if (gameStateChanged !== gameStateDataChanged) {
-      console.error('gameState and gameStateData must be updated together', {
+    if (gameStateChanged && !gameDataChanged) {
+      console.error('gameState and gameData must be updated together', {
         gameStateChanged,
-        gameStateDataChanged,
+        gameDataChanged,
         gameState: changes.get('gameState'),
-        gameStateData: changes.get('gameStateData')
+        gameData: changes.get('gameData')
       });
     }
 
     if (gameStateChanged) {
       let oldGameState = changes.get('gameState');
-      let oldGameStateData = changes.get('gameStateData');
+      let oldGameData = changes.get('gameData');
       let invalidTransition =
         oldGameState &&
         !STATE_TRANSITIONS[oldGameState].includes(this.gameState);
@@ -195,13 +255,13 @@ class JPRistetElement extends LitElement {
         console.error(
           `Invalid state transition: ${ oldGameState } → ${ this.gameState }`,
           {
-            dataNew: this.gameStateData,
-            dataOld: oldGameStateData
+            dataNew: this.gameData,
+            dataOld: oldGameData
           }
         );
       }
 
-      this.handleStateChangeStart(oldGameState, oldGameStateData);
+      this.handleStateChangeStart(oldGameState, oldGameData);
     }
 
     return super.shouldUpdate(changes);
@@ -211,7 +271,7 @@ class JPRistetElement extends LitElement {
     if (changes.has('gameState')) {
       this.handleStateChanged(
         changes.get('gameState'),
-        changes.get('gameStateData')
+        changes.get('gameData')
       );
     }
   }
@@ -243,7 +303,17 @@ class JPRistetElement extends LitElement {
   tick() {
     console.log('[ristet] tick');
     let [ name, piece ] = this.previewStream.next().value;
-    this.previewPiece = { name, ...piece };
+    this.gameData = {
+      ...this.gameData,
+      currentPiece: this.gameData.previewPiece && {
+        ...this.gameData.previewPiece,
+        pos: {
+          x: Math.floor((COLUMNS - pieceWidth(piece)) / 2),
+          y: 0,
+        },
+      },
+      previewPiece: { name, ...piece },
+    };
   }
 
   // EVENT HANDLERS ////////////////////////////////////////////////////////////
@@ -259,7 +329,7 @@ class JPRistetElement extends LitElement {
           case ' ':
             event.preventDefault();
             this.gameState = STATES.PLAYING;
-            this.gameStateData = this.gameStateData?.resumeData ?? {};
+            this.gameData = this.gameData?.resumeData ?? {};
             break;
         }
         break;
@@ -268,13 +338,13 @@ class JPRistetElement extends LitElement {
           case ' ':
             event.preventDefault();
             this.gameState = STATES.PAUSED;
-            this.gameStateData = { resumeData: this.gameStateData };
+            this.gameData = { resumeData: this.gameData };
             break;
         }
     }
   }
 
-  handleStateChanged(oldGameState, oldGameStateData) {
+  handleStateChanged(oldGameState, oldGameData) {
     console.log('[ristet] statechanged', oldGameState, '→', this.gameState);
 
     switch (this.gameState) {
@@ -287,7 +357,7 @@ class JPRistetElement extends LitElement {
     }
   }
 
-  handleStateChangeStart(oldGameState, oldGameStateData) {
+  handleStateChangeStart(oldGameState, oldGameData) {
     console.log('[ristet] statechangestart', oldGameState, '→', this.gameState);
   }
 
@@ -296,46 +366,76 @@ class JPRistetElement extends LitElement {
   render() {
     return html`
       <h2>Ristet</h2>
-      ${ this.renderPreview() }
+      <div id="preview">
+        ${ this.renderPreview() }
+      </div>
       <div id="grid">
-        ${ repeat(
-          this.griderator(),
-          i => i,
-          i => {
-            let x = i % COLUMNS;
-            let y = Math.floor(i / COLUMNS);
-            return this.renderCell(x, y, i);
-          }
-        ) }
+        ${ this.renderGrid() }
+      </div>
+      <div id="overlay">
+        ${ this.renderOverlay() }
       </div>
     `;
   }
 
-  renderCell(x, y, i) {
+  renderCell(x, y, { colorMap }) {
+    let color = colorMap[x][y];
     return html`
-      <div class="grid-cell c${ (i % 3) + 1}">
-        ${ x.toString().padStart(2, '0') }
-        <br/>
-        ${ y.toString().padStart(2, '0') }
+      <div class="${ classMap({
+        'grid-cell': true,
+        [color]: true,
+        [color ? 'on' : 'off']: true
+      }) }">
       </div>
     `;
+  }
+
+  renderGrid() {
+    let colorMap = this.getCellColorMap();
+    return repeat(this.griderator(),
+      i => i,
+      i => {
+        let x = i % COLUMNS;
+        let y = Math.floor(i / COLUMNS);
+        return this.renderCell(x, y, { colorMap });
+      }
+    );
+  }
+
+  renderOverlay() {
+    switch (this.gameState) {
+      case STATES.GAME_OVER:
+        return html`
+          <div id="overlay-content">
+            <h2>Game Over</h2>
+            <p>Nice try!</p>
+          </div>
+        `;
+      case STATES.PAUSED:
+        return html`
+          <div id="overlay-content">
+            <h2>Paused</h2>
+            <p><kbd>Space</kbd> to resume</p>
+          </div>
+        `;
+      default:
+        return '';
+    }
   }
 
   renderPreview() {
-    let { previewPiece } = this;
+    let { previewPiece } = this.gameData;
 
     if (!previewPiece) {
       return '';
     }
 
     return html`
-      <div id="preview">
-        ${ repeat(
-          previewPiece.shape,
-          (_, i) => i,
-          (row, y) => this.renderPreviewRow(previewPiece, row, y)
-        ) }
-      </div>
+      ${ repeat(
+        previewPiece.shape,
+        (_, i) => i,
+        (row, y) => this.renderPreviewRow(previewPiece, row, y)
+      ) }
     `;
   }
 
@@ -352,9 +452,12 @@ class JPRistetElement extends LitElement {
   renderPreviewCell(previewPiece, cell, x, y) {
     return html`
       <div
-        class="grid-cell ${ cell ? 'on' : 'off' } ${ previewPiece.name }"
-        style="grid-column: ${ x + 1 }; grid-row: ${ y + 1 };"
-      >
+        class="${ classMap({
+          'grid-cell': true,
+          'on': cell,
+          [previewPiece.name]: true,
+        }) }"
+        style="grid-column: ${ x + 1 }; grid-row: ${ y + 1 };">
       </div>
     `;
   }
