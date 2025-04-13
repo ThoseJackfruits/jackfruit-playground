@@ -1,7 +1,9 @@
 import { css, LitElement, html } from 'lit';
 import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { getPieceStreamWeighted, pieceWidth } from './lib-pieces.mjs';
+import merge from 'lodash-es/merge';
+
+import { getPieceStreamWeighted, pieceHeight, pieceWidth } from './lib-pieces.mjs';
 
 const COLUMNS = 8;
 const ROWS = 16;
@@ -217,19 +219,28 @@ class JPRistetElement extends LitElement {
   }
 
   getCellColorMap() {
-    let colorMap = Array.from({ length: COLUMNS },
-      () => Array.from({ length: ROWS }, () => 'off'));
+    let colorMap = Array.from({ length: ROWS },
+      () => Array.from({ length: COLUMNS }, () => 'off'));
 
-    let { currentPiece } = this.gameData;
-    if (!currentPiece) {
-      return colorMap;
+    let { buildup, currentPiece } = this.gameData;
+
+    if (buildup) {
+      for (let y = 0; y < buildup.length; y++) {
+        for (let x = 0; x < buildup[y].length; x++) {
+          let buildupPiece = buildup[y][x];
+          if (buildupPiece)
+            colorMap[y][x] = buildupPiece.name;
+        }
+      }
     }
 
-    let { pos, shape } = currentPiece;
-    for (let y = 0; y < shape.length; y++) {
-      for (let x = 0; x < shape[y].length; x++) {
-        if (shape[y][x]) {
-          colorMap[pos.x + x][pos.y + y] = currentPiece.name;
+    if (currentPiece) {
+      let { pos, shape } = currentPiece;
+      for (let y = 0; y < shape.length; y++) {
+        for (let x = 0; x < shape[y].length; x++) {
+          if (shape[y][x]) {
+            colorMap[pos.y + y][pos.x + x] = currentPiece.name;
+          }
         }
       }
     }
@@ -289,27 +300,35 @@ class JPRistetElement extends LitElement {
       yield i;
   }
 
-  movementCommit(movement, gameData=this.gameData) {
-    console.error('[ristet] movementcommit', movement);
+  commitData(data, gameData=this.gameData) {
+    console.log('[ristet] commitdata', data);
 
-    if (!movement || movement instanceof MovementError)
+    if (!data)
       return;
 
     let { currentPiece } = gameData;
+
+    if (data === MovementError.INTERSECTION) {
+      this.gameData = merge(this.queuePiece({
+        ...gameData,
+        currentPiece: null,
+      }), {
+        buildup: addToBuildup(gameData.buildup, currentPiece),
+      });
+      return;
+    }
+
+    if (data instanceof StateChangeError)
+      return;
+
     if (!currentPiece)
       return;
 
-    this.gameData = {
-      ...gameData,
-      currentPiece: {
-        ...currentPiece,
-        pos: movement.pos,
-      },
-    };
+    this.gameData = merge({ ...gameData }, data);
   }
 
-  movementSimulate(direction) {
-    let { currentPiece } = this.gameData;
+  movementSimulate(direction, gameData=this.gameData) {
+    let { currentPiece } = gameData;
     if (!currentPiece) {
       return null;
     }
@@ -330,16 +349,56 @@ class JPRistetElement extends LitElement {
     }
 
     if (newPos.x < 0)
-      return new MovementError();
+      return MovementError.OUT_OF_BOUNDS;
 
     if (newPos.x + pieceWidth(currentPiece) > COLUMNS)
-      return null;
+      return MovementError.OUT_OF_BOUNDS;
 
-    // TODO check buildup for intersections
+    if (newPos.y + pieceHeight(currentPiece) > ROWS)
+      return MovementError.INTERSECTION
 
-    return {
-      pos: newPos
-    };
+    let { buildup } = gameData;
+
+    if (buildup) {
+      for (let y = 0; y < currentPiece.shape.length; y++) {
+        for (let x = 0; x < currentPiece.shape[y].length; x++) {
+          if (currentPiece.shape[y][x] && buildup[y + newPos.y][x + newPos.x]) {
+            return MovementError.INTERSECTION;
+          }
+        }
+      }
+    }
+
+    return merge(gameData, {
+      currentPiece: {
+        pos: newPos
+      }
+    });
+  }
+
+  queuePiece(gameData=this.gameData) {
+    if (gameData.currentPiece)
+      return gameData;
+
+    let nextPreviewPiece = this.previewStream.next().value;
+    let nextPiece =
+      gameData.previewPiece ??
+      this.previewStream.next().value;
+
+    return merge(gameData, {
+      currentPiece: null,
+      previewPiece: null,
+    }, {
+      currentPiece: {
+        ...nextPiece,
+        pos: {
+          // center horizontally
+          x: Math.floor((COLUMNS - pieceWidth(nextPiece)) / 2),
+          y: 0,
+        },
+      },
+      previewPiece: nextPreviewPiece
+    });
   }
 
   scheduleNextTick() {
@@ -354,19 +413,13 @@ class JPRistetElement extends LitElement {
 
   tick() {
     console.log('[ristet] tick');
-    let [ name, piece ] = this.previewStream.next().value;
-    this.gameData = {
-      ...this.gameData,
-      currentPiece: this.gameData.previewPiece && {
-        ...this.gameData.previewPiece,
-        pos: {
-          // center horizontally
-          x: Math.floor((COLUMNS - pieceWidth(piece)) / 2),
-          y: 0,
-        },
-      },
-      previewPiece: { name, ...piece },
-    };
+
+    let { currentPiece } = this.gameData;
+    if (!currentPiece) {
+      return this.commitData(this.queuePiece());
+    }
+
+    this.commitData(this.movementSimulate(DIRECTION.DOWN));
   }
 
   // EVENT HANDLERS ////////////////////////////////////////////////////////////
@@ -390,15 +443,15 @@ class JPRistetElement extends LitElement {
         switch (event.key) {
           case 'ArrowDown':
             event.preventDefault();
-            this.movementCommit(this.movementSimulate(DIRECTION.DOWN));
+            this.commitData(this.movementSimulate(DIRECTION.DOWN));
             break;
           case 'ArrowLeft':
             event.preventDefault();
-            this.movementCommit(this.movementSimulate(DIRECTION.LEFT));
+            this.commitData(this.movementSimulate(DIRECTION.LEFT));
             break;
           case 'ArrowRight':
             event.preventDefault();
-            this.movementCommit(this.movementSimulate(DIRECTION.RIGHT));
+            this.commitData(this.movementSimulate(DIRECTION.RIGHT));
             break;
           case ' ':
             event.preventDefault();
@@ -414,6 +467,7 @@ class JPRistetElement extends LitElement {
 
     switch (this.gameState) {
       case STATES.PLAYING:
+        this.commitData(this.queuePiece());
         this.scheduleNextTick();
         break;
       case STATES.PAUSED:
@@ -444,7 +498,7 @@ class JPRistetElement extends LitElement {
   }
 
   renderCell(x, y, { colorMap }) {
-    let color = colorMap[x][y];
+    let color = colorMap[y][x];
     return html`
       <div class="${ classMap({
         'grid-cell': true,
@@ -530,6 +584,24 @@ class JPRistetElement extends LitElement {
 
 customElements.define('jp-ristet', JPRistetElement);
 
+function addToBuildup(buildup, piece) {
+  buildup = buildup ?? Array.from({ length: ROWS },
+    () => Array.from({ length: COLUMNS }, () => null));
+
+  let { name, pos, shape } = piece;
+
+  for (let y = 0; y < shape.length; y++) {
+    for (let x = 0; x < shape[y].length; x++) {
+      if (shape[y][x]) {
+        buildup[y + pos.y][x + pos.x] = { name };
+      }
+    }
+  }
+
+  return buildup;
+}
+
+
 function * padArrayStart(arr, padValue, length) {
   for (let i = 0; i < length - arr.length; i++) {
     yield padValue;
@@ -549,4 +621,7 @@ class MovementError extends Error {
   constructor(type) {
     super(type);
   }
+}
+
+class StateChangeError extends Error {
 }

@@ -5,7 +5,7 @@ Deno.test('getPieceStreamWeighted generates pieces with correct weights', () => 
   const stream = getPieceStreamWeighted();
 
   const pieces = Array.from({ length: 100 }, () => stream.next().value);
-  const counts = pieces.reduce((acc, [name]) => {
+  const counts = pieces.reduce((acc, { name }) => {
     acc[name] = (acc[name] || 0) + 1;
     return acc;
   }, {});
@@ -19,7 +19,7 @@ Deno.test('getPieceStreamWeighted maintains weighted distribution', () => {
 
   const pieces = Array.from({ length: 1000 }, () => stream.next().value);
 
-  const counts = pieces.reduce((acc, [name]) => {
+  const counts = pieces.reduce((acc, { name }) => {
     acc[name] = (acc[name] || 0) + 1;
     return acc;
   }, {});

@@ -1,5 +1,5 @@
 
-export const PIECES = Object.freeze({
+export const PIECES = deepFreeze({
   I: {
     shape: [
       [ 1, 1, 1, 1 ],
@@ -61,7 +61,7 @@ export function * getPieceStreamWeighted() {
     let { name } = ranges.find(({ end }) => point < end) ?? ranges.at(-1);
     let piece = PIECES[name];
     pieceUsages[name]++;
-    yield [ name, piece ];
+    yield { name, ...piece };
   }
 }
 
@@ -71,4 +71,21 @@ export function pieceWidth(piece) {
 
 export function pieceHeight(piece) {
   return piece.shape.length;
+}
+
+function deepFreeze(obj) {
+  if (Array.isArray(obj))
+    return Object.freeze(obj.map(deepFreeze));
+
+  if (typeof obj !== 'object' || obj === null)
+    return obj;
+
+  return Object.freeze(
+    Object.fromEntries(Object.entries(obj).map(([key, value]) => [
+      key,
+      typeof value === 'object' && value !== null
+        ? deepFreeze(value)
+        : value
+    ]))
+  );
 }
