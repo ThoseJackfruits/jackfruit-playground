@@ -74,6 +74,10 @@ class JPRistetElement extends LitElement {
       filter: blur(6px);
     }
 
+    :host([game-state="game-over"]) #grid {
+      filter: blur(6px);
+    }
+
     h2 {
       grid-area: header;
       margin: 0;
@@ -222,7 +226,8 @@ class JPRistetElement extends LitElement {
     let colorMap = Array.from({ length: ROWS },
       () => Array.from({ length: COLUMNS }, () => 'off'));
 
-    let { buildup, currentPiece } = this.gameData;
+    let { buildup, currentPiece } =
+      this.gameData.endData ?? this.gameData.resumeData ?? this.gameData;
 
     if (buildup) {
       for (let y = 0; y < buildup.length; y++) {
@@ -309,12 +314,21 @@ class JPRistetElement extends LitElement {
     let { currentPiece } = gameData;
 
     if (data === MovementError.INTERSECTION) {
-      this.gameData = merge(this.queuePiece({
+      let gameDataNew = merge(this.queuePiece({
         ...gameData,
         currentPiece: null,
       }), {
         buildup: addToBuildup(gameData.buildup, currentPiece),
       });
+
+      if (gameDataNew.buildup[0].some(cell => cell)) {
+        this.gameState = STATES.GAME_OVER;
+        this.gameData = { endData: gameDataNew }
+        return;
+      }
+
+      this.gameData = gameDataNew;
+
       return;
     }
 
@@ -470,6 +484,9 @@ class JPRistetElement extends LitElement {
         this.commitData(this.queuePiece());
         this.scheduleNextTick();
         break;
+      case STATES.GAME_OVER:
+        this.tickTimeout &&= clearTimeout(this.tickTimeout);
+        break;
       case STATES.PAUSED:
         this.tickTimeout &&= clearTimeout(this.tickTimeout);
         break;
@@ -543,7 +560,8 @@ class JPRistetElement extends LitElement {
   }
 
   renderPreview() {
-    let { previewPiece } = this.gameData;
+    let { previewPiece } =
+      this.gameData.endData ?? this.gameData.resumeData ?? this.gameData;
 
     if (!previewPiece) {
       return '';
@@ -600,7 +618,6 @@ function addToBuildup(buildup, piece) {
 
   return buildup;
 }
-
 
 function * padArrayStart(arr, padValue, length) {
   for (let i = 0; i < length - arr.length; i++) {
