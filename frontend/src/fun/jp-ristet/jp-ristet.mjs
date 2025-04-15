@@ -3,28 +3,11 @@ import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 import merge from 'lodash-es/merge';
 
-import { getPieceStreamWeighted, pieceHeight, pieceWidth } from './lib-pieces.mjs';
+import { STATES, STATE_TRANSITIONS, DIRECTION, ROTATION } from './lib-enum.mjs';
+import { getPieceStreamWeighted, pieceHeight, pieceWidth, rotateShape } from './lib-pieces.mjs';
 
 const COLUMNS = 8;
 const ROWS = 16;
-
-const STATES = Object.freeze({
-  PLAYING: 'playing',
-  PAUSED: 'paused',
-  GAME_OVER: 'game-over',
-});
-
-const STATE_TRANSITIONS = Object.freeze({
-  [STATES.PLAYING]:   [ STATES.GAME_OVER, STATES.PAUSED ],
-  [STATES.PAUSED]:    [ STATES.PLAYING ],
-  [STATES.GAME_OVER]: [ STATES.PLAYING ],
-});
-
-const DIRECTION = Object.freeze({
-  DOWN: 'down',
-  LEFT: 'left',
-  RIGHT: 'right'
-});
 
 class JPRistetElement extends LitElement {
   static properties = {
@@ -34,6 +17,7 @@ class JPRistetElement extends LitElement {
       type: String
     },
     gameData: { state: true },
+    tickRate: { attribute: 'tick-rate', reflect: true, type: Number },
   };
 
   static styles = css`
@@ -201,7 +185,7 @@ class JPRistetElement extends LitElement {
   `;
 
   previewStream = getPieceStreamWeighted();
-  tickRate = 1000;
+  tickRate;
   tickTimeout = null;
 
   // LIFECYCLE /////////////////////////////////////////////////////////////////
@@ -210,6 +194,7 @@ class JPRistetElement extends LitElement {
     super.connectedCallback();
     this.gameState = STATES.PAUSED;
     this.gameData = {};
+    this.tickRate = 800;
     this.addEventListener('click', this.handleClick);
     this.addEventListener('keydown', this.handleKeyDown);
     this.setAttribute('tabindex', '0');
@@ -327,6 +312,16 @@ class JPRistetElement extends LitElement {
         return;
       }
 
+      let removableRows = new Set(gameDataNew.buildup.filter(row => row.every(cell => cell)));
+
+      if (removableRows.size) {
+        gameDataNew.buildup = [
+          ...Array.from({ length: removableRows.size },
+            () => Array.from({ length: COLUMNS }, () => null)),
+          ...gameDataNew.buildup.filter(row => !removableRows.has(row))
+        ];
+      }
+
       this.gameData = gameDataNew;
 
       return;
@@ -377,7 +372,9 @@ class JPRistetElement extends LitElement {
       for (let y = 0; y < currentPiece.shape.length; y++) {
         for (let x = 0; x < currentPiece.shape[y].length; x++) {
           if (currentPiece.shape[y][x] && buildup[y + newPos.y][x + newPos.x]) {
-            return MovementError.INTERSECTION;
+            return direction === DIRECTION.DOWN
+              ? MovementError.INTERSECTION
+              : MovementError.OUT_OF_BOUNDS;
           }
         }
       }
@@ -387,6 +384,63 @@ class JPRistetElement extends LitElement {
       currentPiece: {
         pos: newPos
       }
+    });
+  }
+
+  rotateSimulate(direction, gameData=this.gameData) {
+    let { currentPiece } = gameData;
+    if (!currentPiece) {
+      return null;
+    }
+
+    let heightOld = pieceHeight(currentPiece);
+    let widthOld = pieceWidth(currentPiece);
+    let { pos, shape } = currentPiece;
+    let newShape = rotateShape(shape, direction);
+    let widthNew = pieceWidth({ shape: newShape });
+    let heightNew = pieceHeight({ shape: newShape });
+    let xShift = widthOld > widthNew
+      ? Math.floor((widthOld - widthNew) / 2)
+      : Math.ceil((widthOld - widthNew) / 2);
+    let yShift = heightOld - heightNew;
+    let newPos = {
+      x: pos.x + xShift,
+      y: pos.y + yShift,
+    };
+
+    if (newPos.x < 0) {
+      newPos.x = 0;
+    }
+
+    if (newPos.x + widthNew > COLUMNS) {
+      newPos.x = COLUMNS - widthNew;
+    }
+
+    if (newPos.y < 0) {
+      newPos.y = 0;
+    }
+
+    if (newPos.y + pieceHeight(currentPiece) > ROWS)
+      return MovementError.OUT_OF_BOUNDS;
+
+    let { buildup } = gameData;
+
+    if (buildup) {
+      for (let y = 0; y < currentPiece.shape.length; y++) {
+        for (let x = 0; x < currentPiece.shape[y].length; x++) {
+          if (currentPiece.shape[y][x] && buildup[y + newPos.y][x + newPos.x]) {
+            return MovementError.OUT_OF_BOUNDS;
+          }
+        }
+      }
+    }
+
+    return merge(gameData, {
+      currentPiece: {
+        shape: null
+      }
+    }, {
+      currentPiece: { pos: newPos, shape: newShape }
     });
   }
 
@@ -444,6 +498,15 @@ class JPRistetElement extends LitElement {
 
   handleKeyDown(event) {
     switch (this.gameState) {
+      case STATES.GAME_OVER:
+        switch (event.key) {
+          case ' ':
+            event.preventDefault();
+            this.gameState = STATES.PLAYING;
+            this.gameData = this.gameData?.resumeData ?? {};
+            break;
+        }
+        break;
       case STATES.PAUSED:
         switch (event.key) {
           case ' ':
@@ -457,6 +520,8 @@ class JPRistetElement extends LitElement {
         switch (event.key) {
           case 'ArrowDown':
             event.preventDefault();
+            this.tickTimeout &&= clearTimeout(this.tickTimeout);
+            this.scheduleNextTick();
             this.commitData(this.movementSimulate(DIRECTION.DOWN));
             break;
           case 'ArrowLeft':
@@ -466,6 +531,14 @@ class JPRistetElement extends LitElement {
           case 'ArrowRight':
             event.preventDefault();
             this.commitData(this.movementSimulate(DIRECTION.RIGHT));
+            break;
+          case '1':
+            event.preventDefault();
+            this.commitData(this.rotateSimulate(ROTATION.COUNTERCLOCKWISE));
+            break;
+          case '2':
+            event.preventDefault();
+            this.commitData(this.rotateSimulate(ROTATION.CLOCKWISE));
             break;
           case ' ':
             event.preventDefault();
@@ -545,6 +618,7 @@ class JPRistetElement extends LitElement {
           <div id="overlay-content">
             <h2>Game Over</h2>
             <p>Nice try!</p>
+            <p><kbd>Space</kbd> to restart</p>
           </div>
         `;
       case STATES.PAUSED:
@@ -552,6 +626,8 @@ class JPRistetElement extends LitElement {
           <div id="overlay-content">
             <h2>Paused</h2>
             <p><kbd>Space</kbd> to resume</p>
+            <p><kbd>←</kbd> and <kbd>→</kbd> to move</p>
+            <p><kbd>1</kbd> and <kbd>2</kbd> to rotate</p>
           </div>
         `;
       default:

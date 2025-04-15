@@ -1,4 +1,4 @@
-
+import { ROTATION } from './lib-enum.mjs';
 export const PIECES = deepFreeze({
   I: {
     shape: [
@@ -71,6 +71,23 @@ export function pieceWidth(piece) {
 
 export function pieceHeight(piece) {
   return piece.shape.length;
+}
+
+export function rotateShape(shape, direction) {
+  const height = shape[0].length;
+  const width = shape.length;
+
+  if (direction === ROTATION.CLOCKWISE) {
+    return Array.from({ length: height }, (_, x) => 
+      Array.from({ length: width }, (_, y) => shape[width - 1 - y][x])
+    );
+  } else if (direction === ROTATION.COUNTERCLOCKWISE) {
+    return Array.from({ length: height }, (_, x) => 
+      Array.from({ length: width }, (_, y) => shape[y][height - 1 - x])
+    );
+  } else {
+    throw new Error(`Invalid rotation direction: ${ direction }`);
+  }
 }
 
 function deepFreeze(obj) {
