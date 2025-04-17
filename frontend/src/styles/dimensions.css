@@ -1,6 +1,24 @@
+html {
+  height: 100%;
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+
+body {
+  height: 100%;
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+
 :root {
   --jp-common-border-radius: 0.2rem;
   --jp-common-border-width: 1px;
   --jp-common-max-width: 666px;
   --jp-common-padding: 1rem;
+}
+
+@media (max-width: 600px) {
+  :root {
+    --jp-common-padding: 0.5rem;
+  }
 }

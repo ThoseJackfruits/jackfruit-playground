@@ -8,6 +8,7 @@ class JPChassisMainElement extends LitElement {
   static styles = css`
     :host {
       display: block;
+      overflow-y: auto;
     }
 
     div {
@@ -48,9 +49,7 @@ class JPChassisMainElement extends LitElement {
       case '/about':
         return html`<div>About Page Content</div>`;
       case '/ristet':
-        return html`<div>
-          <jp-ristet></jp-ristet>
-        </div>`;
+        return html`<jp-ristet></jp-ristet>`;
       default:
         return html`<div>404 - Page not found</div>`;
     }

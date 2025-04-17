@@ -9,6 +9,23 @@ class JPChassisElement extends LitElement {
       flex-direction: column;
       height: 100%;
     }
+
+    jp-chassis-nav {
+      flex-shrink: 0;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      flex-shrink: 1;
+      height: 100%;
+    }
+
+    jp-chassis-main {
+      flex-grow: 1;
+      flex-shrink: 1;
+    }
   `;
 
   constructor() {

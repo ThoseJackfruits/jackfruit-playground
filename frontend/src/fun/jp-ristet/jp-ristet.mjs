@@ -22,6 +22,7 @@ class JPRistetElement extends LitElement {
 
   static styles = css`
     :host {
+      background-color: var(--jp-color-bg-0);
       display: grid;
       gap: calc(var(--jp-common-padding) / 2);
       grid-template:
@@ -31,6 +32,8 @@ class JPRistetElement extends LitElement {
       padding: var(--jp-common-padding) var(--jp-common-padding);
       border: var(--jp-common-border-width) solid var(--jp-color-accent);
       border-radius: var(--jp-common-border-radius);
+      max-width: 100%;
+      max-height: 100%;
       overflow: hidden;
     }
 
@@ -84,8 +87,8 @@ class JPRistetElement extends LitElement {
       grid-area: grid;
       grid-template-columns: repeat(${ COLUMNS }, 1fr);
       grid-template-rows: repeat(${ ROWS }, 1fr);
-      max-width: 100vw
-      max-height: 100vh;
+      max-width: 100%;
+      max-height: 100%;
       transition: filter 140ms ease-out;
       aspect-ratio: ${ COLUMNS } / ${ ROWS };
       align-items: start;

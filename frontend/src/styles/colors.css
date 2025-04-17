@@ -7,6 +7,8 @@
   --jp-color-bg-2:    #f0f0e0;
   --jp-color-bg-3:    #e7e7e0;
   --jp-color-bg-4:    #e0e0d0;
+
+  color-scheme: light dark;
 }
 
 html {
