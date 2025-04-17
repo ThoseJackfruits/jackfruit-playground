@@ -315,16 +315,7 @@ class JPRistetElement extends LitElement {
         return;
       }
 
-      let removableRows = new Set(gameDataNew.buildup.filter(row => row.every(cell => cell)));
-
-      if (removableRows.size) {
-        gameDataNew.buildup = [
-          ...Array.from({ length: removableRows.size },
-            () => Array.from({ length: COLUMNS }, () => null)),
-          ...gameDataNew.buildup.filter(row => !removableRows.has(row))
-        ];
-      }
-
+      gameDataNew.buildup = collapseBuildup(gameDataNew.buildup);
       this.gameData = gameDataNew;
 
       return;
@@ -428,10 +419,12 @@ class JPRistetElement extends LitElement {
 
     let { buildup } = gameData;
 
+    let newPiece = { pos: newPos, shape: newShape };
+
     if (buildup) {
-      for (let y = 0; y < currentPiece.shape.length; y++) {
-        for (let x = 0; x < currentPiece.shape[y].length; x++) {
-          if (currentPiece.shape[y][x] && buildup[y + newPos.y][x + newPos.x]) {
+      for (let y = 0; y < newPiece.shape.length; y++) {
+        for (let x = 0; x < newPiece.shape[y].length; x++) {
+          if (newPiece.shape[y][x] && buildup[y + newPos.y][x + newPos.x]) {
             return MovementError.OUT_OF_BOUNDS;
           }
         }
@@ -443,7 +436,7 @@ class JPRistetElement extends LitElement {
         shape: null
       }
     }, {
-      currentPiece: { pos: newPos, shape: newShape }
+      currentPiece: newPiece
     });
   }
 
@@ -550,6 +543,13 @@ class JPRistetElement extends LitElement {
             break;
         }
     }
+
+    switch (event.key) {
+      case 'f':
+        event.preventDefault();
+        this.requestFullscreen();
+        break;
+    }
   }
 
   handleStateChanged(oldGameState, oldGameData) {
@@ -631,6 +631,7 @@ class JPRistetElement extends LitElement {
             <p><kbd>Space</kbd> to resume</p>
             <p><kbd>←</kbd> and <kbd>→</kbd> to move</p>
             <p><kbd>1</kbd> and <kbd>2</kbd> to rotate</p>
+            <p><kbd>f</kbd> to fullscreen</p>
           </div>
         `;
       default:
@@ -693,6 +694,45 @@ function addToBuildup(buildup, piece) {
         buildup[y + pos.y][x + pos.x] = { name };
       }
     }
+  }
+
+  return buildup;
+}
+
+function collapseBuildup(buildup) {
+  let getRemovable = () =>
+    new Set(buildup.filter(row => row.every(cell => cell)));
+
+  for (
+    let removableRows = getRemovable();
+    removableRows.size;
+    removableRows = getRemovable()
+  ) {
+    let pairs = [
+      ...Array.from({ length: removableRows.size },
+        () => Array.from({ length: COLUMNS }, () => null)),
+      ...buildup.filter(row => !removableRows.has(row))
+    ].flatMap((row, i, buildup) => {
+      let nextRow = buildup[i + 1];
+      if (!nextRow) {
+        return [ ];
+      }
+      return [ [ row, nextRow ] ];
+    });
+
+    buildup = pairs.reduce((acc, [ row, nextRow ], y, pairs) => {
+      if (row.every((cell, x) => !cell !== !nextRow[x])) {
+        acc.push(row.map((cell, x) => cell || nextRow[x]));
+      } else {
+        acc.push(row);
+
+        if (y === pairs.length - 1) {
+          acc.push(nextRow);
+        }
+      }
+
+      return acc;
+    }, []);
   }
 
   return buildup;
