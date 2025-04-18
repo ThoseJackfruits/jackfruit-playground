@@ -5,8 +5,16 @@
   --jp-font-face-display: 'Martian Mono', monospace;
   --jp-font-face-header: 'Oi', cursive;
   --jp-font-optical-sizing-display: auto;
+
   --jp-font-size-display: 1.5rem;
   --jp-font-size-nav: 2rem;
+  --jp-font-size-h1: 3rem;
+  --jp-font-size-h2: 2.5rem;
+  --jp-font-size-h3: 2rem;
+  --jp-font-size-h4: 1.5rem;
+  --jp-font-size-h5: 1rem;
+  --jp-font-size-h6: 0.875rem;
+
   --jp-font-style-display: normal;
   --jp-font-variation-settings-display: "wdth" 87.5;
   --jp-font-weight-display: 200;
@@ -19,13 +27,37 @@
   font-variation-settings: var(--jp-font-variation-settings-display);
 }
 
+@media (max-width: 600px) {
+  :root {
+    --jp-font-size-nav: 1.5rem;
+  }
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--jp-font-face-header);
   font-weight: var(--jp-font-weight-header);
 }
 
-@media (max-width: 600px) {
-  :root {
-    --jp-font-size-nav: 1.5rem;
-  }
+h1 {
+  font-size: var(--jp-font-size-h1);
+}
+
+h2 {
+  font-size: var(--jp-font-size-h2);
+}
+
+h3 {
+  font-size: var(--jp-font-size-h3);
+}
+
+h4 {
+  font-size: var(--jp-font-size-h4);
+}
+
+h5 {
+  font-size: var(--jp-font-size-h5);
+}
+
+h6 {
+  font-size: var(--jp-font-size-h6);
 }

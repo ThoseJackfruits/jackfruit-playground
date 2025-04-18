@@ -105,7 +105,7 @@ class JPRistetElement extends LitElement {
       aspect-ratio: 4 / 3;
       align-items: start;
       justify-items: start;
-      height: fill-available;
+      height: var(--jp-font-size-h2);
     }
 
     .grid-cell {
