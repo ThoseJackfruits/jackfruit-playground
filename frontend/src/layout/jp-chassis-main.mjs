@@ -8,7 +8,7 @@ class JPChassisMainElement extends LitElement {
   static styles = css`
     :host {
       display: block;
-      overflow-y: auto;
+      overflow: hidden;
     }
 
     div {

@@ -32,9 +32,13 @@ class JPRistetElement extends LitElement {
       padding: var(--jp-common-padding) var(--jp-common-padding);
       border: var(--jp-common-border-width) solid var(--jp-color-accent);
       border-radius: var(--jp-common-border-radius);
-      max-width: 100%;
-      max-height: 100%;
+      height: 100%;
+      justify-content: center;
       overflow: hidden;
+    }
+
+    :host(:fullscreen) #grid {
+      max-width: 50vh; /* depends on aspect-ratio */
     }
 
     #overlay:empty {
@@ -45,24 +49,28 @@ class JPRistetElement extends LitElement {
 
     #overlay {
       grid-area: grid;
-      font-size: 2em;
+      font-size: 1.5em;
       color: var(--jp-color-text);
       display: flex;
       opacity: 1;
       align-items: center;
       justify-content: center;
-      width: 100%;
+      max-width: 100%;
       height: 100%;
       z-index: 1;
       transition: opacity 140ms ease-out;
     }
 
-    :host([game-state="paused"]) #grid {
+    :host([game-state="paused"]) #grid,
+    :host([game-state="game-over"]) #grid {
       filter: blur(6px);
     }
 
-    :host([game-state="game-over"]) #grid {
-      filter: blur(6px);
+    @media (prefers-color-scheme: dark) {
+      :host([game-state="game-over"]) #grid,
+      :host([game-state="paused"]) #grid .grid-cell.on {
+        filter: brightness(0.5);
+      }
     }
 
     h2 {
@@ -87,7 +95,7 @@ class JPRistetElement extends LitElement {
       grid-area: grid;
       grid-template-columns: repeat(${ COLUMNS }, 1fr);
       grid-template-rows: repeat(${ ROWS }, 1fr);
-      max-width: 100%;
+      max-width: 40vh; /* depends on aspect-ratio */
       max-height: 100%;
       transition: filter 140ms ease-out;
       aspect-ratio: ${ COLUMNS } / ${ ROWS };
@@ -114,6 +122,7 @@ class JPRistetElement extends LitElement {
       align-content: center;
       justify-content: center;
       text-align: center;
+      transition: filter 140ms ease-out;
     }
 
     .grid-cell.on {
@@ -307,6 +316,7 @@ class JPRistetElement extends LitElement {
         currentPiece: null,
       }), {
         buildup: addToBuildup(gameData.buildup, currentPiece),
+        swapped: false,
       });
 
       if (gameDataNew.buildup[0].some(cell => cell)) {
@@ -440,6 +450,29 @@ class JPRistetElement extends LitElement {
     });
   }
 
+  swapSimulate(gameData=this.gameData) {
+    let { currentPiece, previewPiece, swapped } = gameData;
+
+    if (swapped)
+      return SwapError.ALREADY_SWAPPED;
+
+    return merge(gameData, {
+      currentPiece: null,
+      previewPiece: null,
+    }, {
+      currentPiece: {
+        ...previewPiece,
+        pos: {
+          // center horizontally
+          x: Math.floor((COLUMNS - pieceWidth(previewPiece)) / 2),
+          y: 0,
+        },
+      },
+      previewPiece: currentPiece,
+      swapped: true,
+    });
+  }
+
   queuePiece(gameData=this.gameData) {
     if (gameData.currentPiece)
       return gameData;
@@ -536,6 +569,10 @@ class JPRistetElement extends LitElement {
             event.preventDefault();
             this.commitData(this.rotateSimulate(ROTATION.CLOCKWISE));
             break;
+          case '3':
+            event.preventDefault();
+            this.commitData(this.swapSimulate());
+            break;
           case ' ':
             event.preventDefault();
             this.gameState = STATES.PAUSED;
@@ -596,7 +633,7 @@ class JPRistetElement extends LitElement {
       <div class="${ classMap({
         'grid-cell': true,
         [color]: true,
-        [color ? 'on' : 'off']: true
+        [color && color !== 'off' ? 'on' : 'off']: true
       }) }">
       </div>
     `;
@@ -631,6 +668,7 @@ class JPRistetElement extends LitElement {
             <p><kbd>Space</kbd> to resume</p>
             <p><kbd>←</kbd> and <kbd>→</kbd> to move</p>
             <p><kbd>1</kbd> and <kbd>2</kbd> to rotate</p>
+            <p><kbd>3</kbd> to swap</p>
             <p><kbd>f</kbd> to fullscreen</p>
           </div>
         `;
@@ -745,7 +783,10 @@ function * padArrayStart(arr, padValue, length) {
   yield * arr;
 }
 
-class MovementError extends Error {
+class StateChangeError extends Error {
+}
+
+class MovementError extends StateChangeError {
   static TYPE = Object.freeze({
     OUT_OF_BOUNDS: 'out-of-bounds',
     INTERSECTION: 'intersection',
@@ -759,5 +800,10 @@ class MovementError extends Error {
   }
 }
 
-class StateChangeError extends Error {
+class SwapError extends StateChangeError {
+  static TYPE = Object.freeze({
+    ALREADY_SWAPPED: 'already-swapped',
+  });
+
+  static ALREADY_SWAPPED = new SwapError(this.TYPE.ALREADY_SWAPPED);
 }
