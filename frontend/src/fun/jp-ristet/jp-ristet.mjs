@@ -8,6 +8,7 @@ import { getPieceStreamWeighted, pieceHeight, pieceWidth, rotateShape } from './
 
 const COLUMNS = 8;
 const ROWS = 16;
+const CLEAR_LINE_DURATION = 300;
 
 class JPRistetElement extends LitElement {
   static properties = {
@@ -18,6 +19,7 @@ class JPRistetElement extends LitElement {
     },
     gameData: { state: true },
     tickRate: { attribute: 'tick-rate', reflect: true, type: Number },
+    clearedLines: { state: true },
   };
 
   static styles = css`
@@ -57,7 +59,7 @@ class JPRistetElement extends LitElement {
       justify-content: center;
       max-width: 100%;
       height: 100%;
-      z-index: 1;
+      z-index: 2;
       transition: opacity 140ms ease-out;
     }
 
@@ -169,6 +171,27 @@ class JPRistetElement extends LitElement {
       background-color: darkred;
     }
 
+    .grid-cell.clearing {
+      animation: clearLine ${ CLEAR_LINE_DURATION }ms ease-out;
+      align-self: end;
+      z-index: 1;
+      justify-self: end;
+    }
+
+    @keyframes clearLine {
+      0% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.2;
+      }
+      100% {
+        transform: scale(5);
+        opacity: 0
+      }
+    }
+
     @media (prefers-color-scheme: dark) {
       .grid-cell.on.I {
         background-color: #FFB;
@@ -199,6 +222,7 @@ class JPRistetElement extends LitElement {
   previewStream = getPieceStreamWeighted();
   tickRate;
   tickTimeout = null;
+  clearedLines = new Map();
 
   // LIFECYCLE /////////////////////////////////////////////////////////////////
 
@@ -219,7 +243,7 @@ class JPRistetElement extends LitElement {
     super.disconnectedCallback();
   }
 
-  getCellColorMap() {
+  getCellColorMap({ overlay } = {}) {
     let colorMap = Array.from({ length: ROWS },
       () => Array.from({ length: COLUMNS }, () => 'off'));
 
@@ -232,6 +256,16 @@ class JPRistetElement extends LitElement {
           let buildupPiece = buildup[y][x];
           if (buildupPiece)
             colorMap[y][x] = buildupPiece.name;
+        }
+      }
+    }
+
+    if (overlay) {
+      for (let y = 0; y < overlay.length; y++) {
+        for (let x = 0; overlay[y] && x < overlay[y].length; x++) {
+          let overlayPiece = overlay[y][x];
+          if (overlayPiece)
+            colorMap[y][x] = overlayPiece.name;
         }
       }
     }
@@ -325,7 +359,25 @@ class JPRistetElement extends LitElement {
         return;
       }
 
-      gameDataNew.buildup = collapseBuildup(gameDataNew.buildup);
+      // Find rows that need to be cleared
+      let rowsToClear = new Map()
+      for (let y = 0; y < gameDataNew.buildup.length; y++) {
+        if (gameDataNew.buildup[y].every(cell => cell)) {
+          rowsToClear.set(y, [ ...gameDataNew.buildup[y] ]);
+        }
+      }
+
+      if (rowsToClear.size > 0) {
+        // Store the rows to be cleared
+        this.clearedLines = rowsToClear;
+        // Remove the cleared rows from buildup
+        gameDataNew.buildup = collapseBuildup(gameDataNew.buildup);
+        // Schedule the collapse for after animation
+        setTimeout(() => {
+          this.clearedLines = new Map();
+        }, CLEAR_LINE_DURATION);
+      }
+
       this.gameData = gameDataNew;
 
       return;
@@ -620,6 +672,7 @@ class JPRistetElement extends LitElement {
       </div>
       <div id="grid">
         ${ this.renderGrid() }
+        ${ this.renderClearedLines() }
       </div>
       <div id="overlay">
         ${ this.renderOverlay() }
@@ -627,16 +680,35 @@ class JPRistetElement extends LitElement {
     `;
   }
 
-  renderCell(x, y, { colorMap }) {
+  renderCell(x, y, { clearing, colorMap }) {
     let color = colorMap[y][x];
     return html`
       <div class="${ classMap({
         'grid-cell': true,
         [color]: true,
-        [color && color !== 'off' ? 'on' : 'off']: true
-      }) }">
+        [color && color !== 'off' ? 'on' : 'off']: true,
+        'clearing': clearing
+      }) }"
+      style="grid-column: ${ x + 1 }; grid-row: ${ y + 1 };">
       </div>
     `;
+  }
+
+  renderClearedLine(y, cells, { colorMap }) {
+    return repeat(cells,
+      (_, x) => x,
+      (cell, x) => this.renderCell(x, y, { clearing: true, colorMap })
+    );
+  }
+
+  renderClearedLines() {
+    let colorMap = this.getCellColorMap({
+      overlay: Object.fromEntries(this.clearedLines.entries())
+    });
+    return repeat(this.clearedLines.entries(),
+      ([ y ]) => y,
+      ([ y, cells ]) => this.renderClearedLine(y, cells, { colorMap })
+    );
   }
 
   renderGrid() {
