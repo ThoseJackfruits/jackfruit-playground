@@ -45,7 +45,7 @@ class JPCounterDOMElement extends HTMLElement {
 
   handleCounterChange = (event) => {
     this.count = event.detail.data.count;
-  }
+  };
 
   // RENDER ////////////////////////////////////////////////////////////////////
 

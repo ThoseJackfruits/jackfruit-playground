@@ -2,6 +2,7 @@ import * as path from 'jsr:@std/path';
 import handleAPIRequest from './handle-api-request.mjs';
 import handleWebSocketUpgradeRequest from './handle-web-socket-upgrade-request.mjs';
 import { kv } from './store/index.mjs';
+
 Deno.serve(async req => {
   if (req.headers.get('upgrade') === 'websocket') {
     return await handleWebSocketUpgradeRequest(req);
@@ -9,6 +10,11 @@ Deno.serve(async req => {
 
   const url = new URL(req.url);
   const { pathname } = url;
+
+  // In lieu of escaping pathname, just return Bad Req for '..'
+  if (pathname.includes('..'))
+    return new Response('Invalid pathname', { status: 400 });
+
   const { signal } = req;
   const localPath = path.join('.', pathname);
   const extension = path.extname(localPath);

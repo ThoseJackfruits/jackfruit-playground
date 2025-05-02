@@ -4,8 +4,6 @@ async function main() {
     import('/frontend/src/web-socket.mjs'),
     import('/frontend/src/window.mjs'),
     import('lit').then(({ html, render }) => {
-      // Create a global router handler
-
       render(html`
         <jp-chassis>
         </jp-chassis>
