@@ -160,7 +160,7 @@ class JPRistetElement extends LitElement {
     }
 
     .grid-cell.path {
-      background-color: #999;
+      background-color: #9996;
     }
 
     .grid-cell.c1 {
@@ -636,6 +636,9 @@ class JPRistetElement extends LitElement {
             break;
           case 'ArrowUp':
             event.preventDefault();
+            let result = this.movementSimulate(DIRECTION.DOWN);
+            while(!(result instanceof MovementError)) result = this.movementSimulate(DIRECTION.DOWN);
+            this.commitData(result);
             break;
           case '1':
             event.preventDefault();
