@@ -159,6 +159,10 @@ class JPRistetElement extends LitElement {
       background-color: var(--jp-color-bg-4);
     }
 
+    .grid-cell.path {
+      background-color: #999;
+    }
+
     .grid-cell.c1 {
       background-color: darkblue;
     }
@@ -270,13 +274,30 @@ class JPRistetElement extends LitElement {
       }
     }
 
+    /*
+     * Fill in blocks that make up the current piece. Also highlights unoccupied blocks
+     * within the current shape that are under a "ceiling", or an occupied block of the
+     * current piece.
+     */
     if (currentPiece) {
       let { pos, shape } = currentPiece;
-      for (let y = 0; y < shape.length; y++) {
-        for (let x = 0; x < shape[y].length; x++) {
+      for (let x = 0; x < shape[0].length; x++) {
+        let foundCeiling = false;
+        for (let y = 0; y < shape.length; y++) {
           if (shape[y][x]) {
             colorMap[pos.y + y][pos.x + x] = currentPiece.name;
-          }
+            foundCeiling = true;
+          } else if (foundCeiling && colorMap[pos.y + y][pos.x + x] === 'off')
+            colorMap[pos.y + y][pos.x + x] = 'path';
+        }
+      }
+
+      // Highlight unoccupied blocks under the current piece (until an occupied one is hit)
+      for(let col = pos.x; col < pos.x + shape[0].length; col++) {
+        for (let row = pos.y + shape.length; row < ROWS; row++) {
+          if (colorMap[row][col] !== 'off')
+            break;
+          colorMap[row][col] = 'path';
         }
       }
     }
@@ -612,6 +633,9 @@ class JPRistetElement extends LitElement {
           case 'ArrowRight':
             event.preventDefault();
             this.commitData(this.movementSimulate(DIRECTION.RIGHT));
+            break;
+          case 'ArrowUp':
+            event.preventDefault();
             break;
           case '1':
             event.preventDefault();
