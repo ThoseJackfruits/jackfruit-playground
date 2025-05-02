@@ -93,6 +93,7 @@ class JPChassisNavElement extends LitElement {
       <nav>
         <a class="${ this.renderClass('/') }" href="/">Home</a>
         <a class="${ this.renderClass('/ristet') }" href="/ristet">Ristet</a>
+        <a class="${ this.renderClass('/timpist') }" href="/timpist">Timpist</a>
         <a class="${ this.renderClass('/about') }" href="/about">About</a>
         <div></div>
       </nav>

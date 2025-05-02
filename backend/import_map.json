@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "@store": "./backend/src/store/index.mjs"
+  }
+}

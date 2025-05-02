@@ -1,7 +1,7 @@
 import * as path from 'jsr:@std/path';
 import handleAPIRequest from './handle-api-request.mjs';
 import handleWebSocketUpgradeRequest from './handle-web-socket-upgrade-request.mjs';
-import { kv } from './store/index.mjs';
+import { kv } from '@store';
 
 Deno.serve(async req => {
   if (req.headers.get('upgrade') === 'websocket') {
@@ -39,9 +39,12 @@ Deno.serve(async req => {
     }
   }
 
-  // Init the visitor count to 0 if the key doesn't exist
+  const importMap =
+    await Deno.readTextFile("./frontend/src/import_map.json", { signal });
+  const index = (await Deno.readTextFile("./index.html", { signal }))
+    .replace('__IMPORTMAP__', importMap);
 
-  return new Response(await Deno.readFile("./index.html", { signal }), {
+  return new Response(index, {
     headers: {
       "Content-Type": "text/html",
       "X-Visitor-Count": await getNextVisitorCount(),

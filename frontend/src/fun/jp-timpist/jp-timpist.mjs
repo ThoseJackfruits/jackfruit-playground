@@ -1,0 +1,241 @@
+import { LitElement, html, css, svg } from 'lit';
+import { repeat } from 'lit/directives/repeat.js';
+import { getFieldPoints } from './lib-field.mjs';
+import { pairs } from './lib-util.mjs';
+
+const FIELD_TYPE_OPTIONS = Object.freeze([
+  { label: 'Circle', value: 'circle' },
+  { label: 'Ellipse', value: 'ellipse' },
+  { label: 'Peanut', value: 'peanut' },
+  { label: 'Square (rounded)', value: 'square-rounded' },
+  { label: 'Square (sharp)', value: 'square-sharp' },
+  { label: 'Star', value: 'star' },
+]);
+
+class JPTimpistElement extends LitElement {
+  static properties = {
+    fieldLineCount: { type: Number, reflect: true },
+    fieldType: { type: String, reflect: true }
+  };
+
+  static styles = css`
+    :host {
+      display: flex;
+      box-sizing: border-box;
+      flex-direction: column;
+      flex-shrink: 1;
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 0 var(--jp-common-padding) var(--jp-common-padding);
+      max-width: var(--jp-common-max-width);
+    }
+
+    form {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    form .field {
+      display: grid;
+      grid-template:
+        'label select' 1fr /
+        1fr 1fr;
+      column-gap: var(--jp-common-padding);
+    }
+
+    form .field + .field {
+      margin-top: var(--jp-common-padding);
+    }
+
+    svg {
+      max-width: 100%;
+      max-height: 100%;
+      margin-top: var(--jp-common-padding);
+      stroke: var(--jp-color-text);
+      stroke-linecap: round;
+      overflow: hidden;
+      flex-shrink: 1;
+    }
+  `;
+
+  // LIFECYCLE /////////////////////////////////////////////////////////////////
+
+  connectedCallback() {
+    this.fieldLineCount ||= 11;
+    this.fieldType ||= 'circle';
+    let usp = new URLSearchParams(location.search);
+    this.fieldLineCount = usp.get('line-count') || 11;
+    this.fieldType = usp.get('type') || 'circle';
+    super.connectedCallback();
+  }
+
+  // EVENT HANDLERS //////////////////////////////////////////////////////////
+
+  handleFieldLineCountChange(event) {
+    this.fieldLineCount = event.target.value;
+    let usp = new URLSearchParams(location.search);
+    usp.set('line-count', this.fieldLineCount);
+    history.replaceState({}, '', `?${ usp.toString() }`);
+  }
+
+  handleFieldTypeChange(event) {
+    this.fieldType = event.target.value;
+    let usp = new URLSearchParams(location.search);
+    usp.set('type', this.fieldType);
+    history.replaceState({}, '', `?${ usp.toString() }`);
+  }
+
+  handleSubmit(event) {
+    event.preventDefault();
+  }
+
+  getRadiusGetter() {
+    switch (this.fieldType) {
+      case 'circle':
+        return (angle, i) => ({ outer: 40, inner: 5 });
+      case 'ellipse':
+        return (angle, i) => {
+          let outer = 30 + 15 * (1 - Math.abs(Math.cos(angle)));
+          let inner = outer * 0.2;
+          return { outer, inner };
+        };
+      case 'peanut':
+        return (angle, i) => {
+          let outer =
+            30 +
+            15 * Math.abs(Math.sin(angle)) ** 1.2 -
+            15 * Math.abs(Math.cos(angle)) ** 1.8;
+          let inner = 5;
+          return { outer, inner };
+        };
+      case 'star':
+        return (angle, i) => {
+          let outer = 40;
+          let inner = 5;
+          if (i % 2 === 0) {
+            outer = 20;
+            inner = 3.5;
+          }
+          return { outer, inner };
+        };
+      case 'square-rounded':
+        return (angle, i) => {
+          let outer = 40;
+          let inner = 5;
+
+          outer *= Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle));
+
+          return { outer, inner };
+        };
+      case 'square-sharp':
+        return (angle, i) => {
+          let maxComponent = Math.max(
+            Math.abs(Math.cos(angle)),
+            Math.abs(Math.sin(angle)));
+          let outer = maxComponent > 0 ? 40 / maxComponent : 40;
+          let inner = 5;
+
+          return { outer, inner };
+        };
+    }
+  }
+
+  // RENDER ////////////////////////////////////////////////////////////////////
+
+  render() {
+    return html`
+      <form @submit=${ this.handleSubmit }>
+        <div class="field">
+          <label for="field-type">Field type</label>
+          <select @change=${ this.handleFieldTypeChange } id="field-type">
+            ${ repeat(
+              FIELD_TYPE_OPTIONS,
+              ({ label, value }) => html`
+                <option
+                  ?selected=${ this.fieldType === value }
+                  value="${ value }">${ label }</option>
+              `
+            ) }
+          </select>
+        </div>
+        <div class="field">
+          <label for="field-line-count">Side count</label>
+          <input
+            type="range"
+            min="3"
+            max="20"
+            step="1"
+            @input=${ this.handleFieldLineCountChange}
+            id="field-line-count"
+            value="${this.fieldLineCount }">
+        </div>
+      </form>
+      <svg viewBox="0 0 100 100">
+        ${ this.renderField() }
+        ${ this.renderShip() }
+      </svg>
+    `;
+  }
+
+  renderField() {
+    const [ ...points ] = getFieldPoints(this.fieldLineCount, {
+      getRadius: this.getRadiusGetter(),
+      offset: 0.5
+    });
+    const [ ...pointPairs ] = pairs(points);
+
+    return svg`
+      <!-- Inside path -->
+      ${ repeat(
+        pointPairs,
+        pair => pair[0].angle,
+        pair => svg`
+        <line
+          x1="${ pair[0].xInner }"
+          y1="${ pair[0].yInner }"
+          x2="${ pair[1].xInner }"
+          y2="${ pair[1].yInner }"
+          stroke-width="0.5px">
+        </line>
+      `) }
+
+      <!-- Inside-outside lines -->
+      ${ repeat(
+        points,
+        point => point.angle,
+        point => svg`
+        <line
+          x1="${ point.xInner }"
+          y1="${ point.yInner }"
+          x2="${ point.xOuter }"
+          y2="${ point.yOuter }"
+          stroke-width="0.5px">
+        </line>
+      `) }
+
+      <!-- Outside path -->
+      ${ repeat(
+        pointPairs,
+        pair => pair[0].angle,
+        pair => svg`
+        <line
+          x1="${ pair[0].xOuter }"
+          y1="${ pair[0].yOuter }"
+          x2="${ pair[1].xOuter }"
+          y2="${ pair[1].yOuter }"
+          stroke-width="0.5px">
+        </line>
+      `) }
+    `;
+  }
+
+  renderShip() {
+    return svg`
+    `;
+  }
+}
+
+customElements.define('jp-timpist', JPTimpistElement);

@@ -1,5 +1,5 @@
-import * as store from '../store/index.mjs';
+import { counter } from '@store';
 
 addEventListener('ws-message-counter-increment', async event => {
-  await store.counter.increment();
+  await counter.increment();
 });

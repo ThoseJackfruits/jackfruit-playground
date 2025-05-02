@@ -7,7 +7,8 @@ class JPChassisMainElement extends LitElement {
 
   static styles = css`
     :host {
-      display: block;
+      display: flex;
+      flex-direction: column;
       overflow: hidden;
     }
 
@@ -33,8 +34,14 @@ class JPChassisMainElement extends LitElement {
         import('/frontend/src/fun/jp-counter-dom.mjs');
         import('/frontend/src/fun/jp-counter-lit.mjs');
         break;
+      case '/about':
+        import('/frontend/src/pages/jp-about.mjs');
+        break;
       case '/ristet':
         import('/frontend/src/fun/jp-ristet/jp-ristet.mjs');
+        break;
+      case '/timpist':
+        import('/frontend/src/fun/jp-timpist/jp-timpist.mjs');
         break;
     }
   }
@@ -47,9 +54,11 @@ class JPChassisMainElement extends LitElement {
           <jp-counter-lit></jp-counter-lit>
         </div>`;
       case '/about':
-        return html`<div>About Page Content</div>`;
+        return html`<jp-about></jp-about>`;
       case '/ristet':
         return html`<jp-ristet></jp-ristet>`;
+      case '/timpist':
+        return html`<jp-timpist></jp-timpist>`;
       default:
         return html`<div>404 - Page not found</div>`;
     }
