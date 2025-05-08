@@ -12,10 +12,16 @@ const FIELD_TYPE_OPTIONS = Object.freeze([
   { label: 'Star', value: 'star' },
 ]);
 
+const STATE = Object.freeze({
+  PREVIEW: 'preview',
+  PAUSE: 'pause',
+  PLAY: 'play'
+});
+
 class JPTimpistElement extends LitElement {
   static properties = {
-    fieldLineCount: { type: Number, reflect: true },
-    fieldType: { type: String, reflect: true }
+    state: { type: String, reflect: true },
+    data: { state: true },
   };
 
   static styles = css`
@@ -64,27 +70,36 @@ class JPTimpistElement extends LitElement {
   // LIFECYCLE /////////////////////////////////////////////////////////////////
 
   connectedCallback() {
-    this.fieldLineCount ||= 11;
-    this.fieldType ||= 'circle';
-    let usp = new URLSearchParams(location.search);
-    this.fieldLineCount = usp.get('line-count') || 11;
-    this.fieldType = usp.get('type') || 'circle';
     super.connectedCallback();
+    this.state = STATE.PREVIEW
+    let usp = new URLSearchParams(location.search);
+    this.data = {
+      fieldLineCount: usp.get('preview-line-count') || 11,
+      fieldType: usp.get('preview-type') || 'circle'
+    };
+  }
+
+  disconnectedCallback() {
+    this.data = null;
+    this.state = null;
+    super.disconnectedCallback();
   }
 
   // EVENT HANDLERS //////////////////////////////////////////////////////////
 
   handleFieldLineCountChange(event) {
-    this.fieldLineCount = event.target.value;
+    let fieldLineCount = event.target.value;
+    this.data = { ...this.data, fieldLineCount };
     let usp = new URLSearchParams(location.search);
-    usp.set('line-count', this.fieldLineCount);
+    usp.set('preview-line-count', fieldLineCount);
     history.replaceState({}, '', `?${ usp.toString() }`);
   }
 
   handleFieldTypeChange(event) {
-    this.fieldType = event.target.value;
+    let fieldType = event.target.value;
+    this.data = { ...this.data, fieldType };
     let usp = new URLSearchParams(location.search);
-    usp.set('type', this.fieldType);
+    usp.set('preview-type', fieldType);
     history.replaceState({}, '', `?${ usp.toString() }`);
   }
 
@@ -93,7 +108,7 @@ class JPTimpistElement extends LitElement {
   }
 
   getRadiusGetter() {
-    switch (this.fieldType) {
+    switch (this.data.fieldType) {
       case 'circle':
         return (angle, i) => ({ outer: 40, inner: 5 });
       case 'ellipse':
@@ -155,7 +170,7 @@ class JPTimpistElement extends LitElement {
               FIELD_TYPE_OPTIONS,
               ({ label, value }) => html`
                 <option
-                  ?selected=${ this.fieldType === value }
+                  ?selected=${ this.data.fieldType === value }
                   value="${ value }">${ label }</option>
               `
             ) }
@@ -170,7 +185,7 @@ class JPTimpistElement extends LitElement {
             step="1"
             @input=${ this.handleFieldLineCountChange}
             id="field-line-count"
-            value="${this.fieldLineCount }">
+            value="${ this.data.fieldLineCount }">
         </div>
       </form>
       <svg viewBox="0 0 100 100">
@@ -181,7 +196,7 @@ class JPTimpistElement extends LitElement {
   }
 
   renderField() {
-    const [ ...points ] = getFieldPoints(this.fieldLineCount, {
+    const [ ...points ] = getFieldPoints(this.data.fieldLineCount, {
       getRadius: this.getRadiusGetter(),
       offset: 0.5
     });

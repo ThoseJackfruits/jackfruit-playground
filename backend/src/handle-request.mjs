@@ -16,14 +16,15 @@ Deno.serve(async req => {
     return new Response('Invalid pathname', { status: 400 });
 
   const { signal } = req;
-  const localPath = path.join('.', pathname);
-  const extension = path.extname(localPath);
 
   if (pathname.startsWith('/api/')) {
     return await handleAPIRequest(req);
   }
 
-  if (pathname.startsWith('/frontend/src/')) {
+  const extension = path.extname(pathname);
+
+  if (pathname.match(/^\/frontend\/(?:src|assets)\//)) {
+    const localPath = path.join('.', pathname);
     try {
       return new Response(await Deno.readFile(localPath, { signal }), {
         headers: {
@@ -39,17 +40,21 @@ Deno.serve(async req => {
     }
   }
 
-  const importMap =
-    await Deno.readTextFile("./frontend/src/import_map.json", { signal });
-  const index = (await Deno.readTextFile("./index.html", { signal }))
-    .replace('__IMPORTMAP__', importMap);
+  if (!extension) {
+    const importMap =
+      await Deno.readTextFile("./frontend/src/import_map.json", { signal });
+    const index = (await Deno.readTextFile("./index.html", { signal }))
+      .replace('__IMPORTMAP__', importMap);
 
-  return new Response(index, {
-    headers: {
-      "Content-Type": "text/html",
-      "X-Visitor-Count": await getNextVisitorCount(),
-    },
-  });
+    return new Response(index, {
+      headers: {
+        "Content-Type": "text/html",
+        "X-Visitor-Count": await getNextVisitorCount(),
+      },
+    });
+  }
+
+  return new Response("Not found", { status: 404 });
 });
 
 function getContentType(extension) {
@@ -61,6 +66,8 @@ function getContentType(extension) {
       return "text/css";
     case ".html":
       return "text/html";
+    case ".png":
+      return "image/png";
     default:
       throw new Error(`Serving unknown file extension: ${ extension }`);
   }
