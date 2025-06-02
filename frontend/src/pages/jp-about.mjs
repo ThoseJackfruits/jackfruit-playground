@@ -12,6 +12,11 @@ class JPAboutElement extends LitElement {
 
     a {
       display: inline-flex;
+      color: var(--jp-color-accent);
+    }
+
+    a:visited {
+      color: var(--jp-color-accent);
     }
   `;
 
@@ -21,7 +26,7 @@ class JPAboutElement extends LitElement {
         <span>@jackgeralddavis</span>
       </a> and <a href="https://github.com/ThoseGrapefruits">
         <span>@ThoseGrapefruits</span>
-      </a>.</p>
+      </a></p>
     `;
   }
 }
