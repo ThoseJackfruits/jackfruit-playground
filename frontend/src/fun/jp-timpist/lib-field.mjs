@@ -46,33 +46,61 @@ export function * getFieldPoints(n, {
     let sin = Math.sin(angle);
     let cos = Math.cos(angle);
     let { outer, inner, innerOffsetY=0 } = getRadius(angle, i);
+    let ship = outer + 3;
 
     angle = angle.toFixed(2);
     let
       rOuterF = (outer + sin * innerOffsetY).toFixed(2),
       xOuterF = (50 + sin * outer).toFixed(2),
       yOuterF = (50 + cos * outer).toFixed(2),
+      rOuter  = +rOuterF,
+      xOuter  = +xOuterF,
+      yOuter  = +yOuterF;
+    let
       rInnerF = inner.toFixed(2),
       xInnerF = (50 + sin * inner).toFixed(2),
-      yInnerF = (50 + innerOffsetY + cos * inner).toFixed(2);
+      yInnerF = (50 + innerOffsetY + cos * inner).toFixed(2),
+      rInner  = +rInnerF,
+      xInner  = +xInnerF,
+      yInner  = +yInnerF;
+    let
+      rShipF  = (ship + sin * innerOffsetY).toFixed(2),
+      xShipF  = (50 + sin * ship).toFixed(2),
+      yShipF  = (50 + cos * ship).toFixed(2),
+      rShip   = +rShipF,
+      xShip   = +xShipF,
+      yShip   = +yShipF;
+
+    let angleActual = Math.tan((yOuter - yInner) / ((xOuter - xInner) || 1));
+    let angleActualF = angleActual.toFixed(2);
+    angleActual = +angleActualF;
 
     yield {
       angle:  +angle,
       angleF:  angle,
+      angleActual,
+      angleActualF,
 
-      rOuter: +rOuterF,
+      rOuter,
       rOuterF,
-      xOuter: +xOuterF,
+      xOuter,
       xOuterF,
-      yOuter: +yOuterF,
+      yOuter,
       yOuterF,
 
-      rInner: +rInnerF,
+      rInner,
       rInnerF,
-      xInner: +xInnerF,
+      xInner,
       xInnerF,
-      yInner: +yInnerF,
+      yInner,
       yInnerF,
+
+      rShip,
+      rShipF,
+      xShip,
+      xShipF,
+      yShip,
+      yShipF,
     }
   }
 }

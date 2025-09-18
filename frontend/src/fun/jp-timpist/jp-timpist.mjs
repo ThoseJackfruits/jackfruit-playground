@@ -18,8 +18,6 @@ const STATE = Object.freeze({
   PLAY: 'play'
 });
 
-const jpRAF = Symbol('raf');
-
 class JPTimpistElement extends LitElement {
   static properties = {
     state: { type: String, reflect: true },
@@ -75,11 +73,14 @@ class JPTimpistElement extends LitElement {
     super.connectedCallback();
     this.state = STATE.PREVIEW
     let usp = new URLSearchParams(location.search);
+    let fieldLineCount = usp.get('preview-line-count') || 11
     this.data = {
-      fieldLineCount: usp.get('preview-line-count') || 11,
+      fieldLineCount,
       fieldType: usp.get('preview-type') || 'circle',
       ship: 0
     };
+
+    Object.assign(this.data, this.getFieldLineData());
 
     this.rafStart();
   }
@@ -94,7 +95,13 @@ class JPTimpistElement extends LitElement {
 
   handleFieldLineCountChange(event) {
     let fieldLineCount = event.target.value;
-    this.data = { ...this.data, fieldLineCount };
+
+    this.data = {
+      ...this.data,
+      fieldLineCount
+    };
+
+    Object.assign(this.data, this.getFieldLineData());
     let usp = new URLSearchParams(location.search);
     usp.set('preview-line-count', fieldLineCount);
     history.replaceState({}, '', `?${ usp.toString() }`);
@@ -108,11 +115,40 @@ class JPTimpistElement extends LitElement {
     history.replaceState({}, '', `?${ usp.toString() }`);
   }
 
+  handleWheel(event) {
+    let dist = event.deltaY;
+    switch (event.deltaMode) {
+      case WheelEvent.DOM_DELTA_PIXEL:
+        dist /= 120;
+      case WheelEvent.DOM_DELTA_LINE:
+        break;
+      case WheelEvent.DOM_DELTA_PAGE:
+        dist *= 100;
+        break;
+    }
+
+    this.data.ship += dist;
+    this.data = { ...this.data };
+  }
+
   handleSubmit(event) {
     event.preventDefault();
   }
 
   // API ///////////////////////////////////////////////////////////////////////
+
+  getFieldLineData() {
+    const [ ...fieldLinePoints ] = getFieldPoints(this.data.fieldLineCount, {
+      getRadius: this.getRadiusGetter(),
+      offset: 0.5
+    });
+    const [ ...fieldLinePointPairs ] = pairs(fieldLinePoints);
+
+    return {
+      fieldLinePoints,
+      fieldLinePointPairs
+    };
+  }
 
   getRadiusGetter() {
     switch (this.data.fieldType) {
@@ -173,8 +209,11 @@ class JPTimpistElement extends LitElement {
   };
 
   rafStart = () => {
+    if (!this.isConnected)
+      return;
+
     try {
-      this.moveShip();
+      // this.moveShip();
     } finally {
       requestAnimationFrame(this.rafStart);
     }
@@ -183,6 +222,10 @@ class JPTimpistElement extends LitElement {
   // RENDER ////////////////////////////////////////////////////////////////////
 
   render() {
+    if (!this.data) {
+      return '';
+    }
+
     return html`
       <form @submit=${ this.handleSubmit }>
         <div class="field">
@@ -210,7 +253,9 @@ class JPTimpistElement extends LitElement {
             value="${ this.data.fieldLineCount }">
         </div>
       </form>
-      <svg viewBox="0 0 100 100">
+      <svg
+        @wheel="${ this.handleWheel }"
+        viewBox="0 0 100 100">
         ${ this.renderField() }
         ${ this.renderShip() }
       </svg>
@@ -218,30 +263,7 @@ class JPTimpistElement extends LitElement {
   }
 
   renderField() {
-    const [ ...points ] = getFieldPoints(this.data.fieldLineCount, {
-      getRadius: this.getRadiusGetter(),
-      offset: 0.5
-    });
-    const [ ...pointPairs ] = pairs(points);
-
-    let shipFloor = Math.floor(this.data.ship);
-    let shipIndex = shipFloor % pointPairs.length;
-    let shipPair = pointPairs[shipIndex];
-    let shipR = 0.5 * Math.sqrt(lerp(
-      shipPair[0].rOuter - shipPair[0].rInner,
-      shipPair[1].rOuter - shipPair[1].rInner,
-      this.data.ship - shipFloor
-    ));
-    let shipX = lerp(
-      shipPair[0].xOuter,
-      shipPair[1].xOuter,
-      this.data.ship - shipFloor
-    );
-    let shipY = lerp(
-      shipPair[0].yOuter,
-      shipPair[1].yOuter,
-      this.data.ship - shipFloor
-    );
+    const { fieldLinePoints: points, fieldLinePointPairs: pointPairs } = this.data;
 
     return svg`
       <!-- Inside path -->
@@ -285,19 +307,79 @@ class JPTimpistElement extends LitElement {
           stroke-width="0.5px">
         </line>
       `) }
-
-      <circle
-        cx="${ shipX }"
-        cy="${ shipY }"
-        r="${ shipR }"
-        stroke="transparent"
-        fill="green">
-      </circle>
     `;
   }
 
   renderShip() {
+    const { fieldLinePoints: points, fieldLinePointPairs: pointPairs } = this.data;
+    let shipFloor = Math.floor(this.data.ship);
+    let shipIndex = shipFloor % pointPairs.length;
+    let shipT = this.data.ship - shipFloor;
+    let shipPair = pointPairs.at(shipIndex);
+    let shipX = lerp(
+      shipPair[0].xShip,
+      shipPair[1].xShip,
+      shipT
+    );
+    let shipY = lerp(
+      shipPair[0].yShip,
+      shipPair[1].yShip,
+      shipT
+    );
+    let shipAngle = lerp(
+      shipPair[0].angleActual,
+      shipPair[1].angleActual,
+      shipT
+    );
+
+    let shipAngleC = Math.cos(shipAngle);
+    let shipAngleS = Math.sin(shipAngle);
+
     return svg`
+      <!-- Ship base -->
+
+      ${ repeat(
+        [ 1, -1 ],
+        offset => offset,
+        offset => svg`
+          <line
+            x1="${ shipPair[0].xOuterF }"
+            y1="${ shipPair[0].yOuterF }"
+            x2="${ shipX+shipAngleC*offset }"
+            y2="${ shipY-shipAngleS*offset }"
+            stroke="yellow"
+            stroke-width="0.5px">
+          </line>
+
+          <line
+            x1="${ shipPair[1].xOuterF }"
+            y1="${ shipPair[1].yOuterF }"
+            x2="${ shipX-shipAngleC*offset }"
+            y2="${ shipY+shipAngleS*offset }"
+            stroke="yellow"
+            stroke-width="0.5px">
+          </line>
+      `) }
+
+      <!-- Ship arms -->
+
+      <line
+        x1="${ shipPair[1].xOuterF }"
+        y1="${ shipPair[1].yOuterF }"
+        x2="${ shipPair[1].xOuter + 8 * Math.cos(shipPair[1].angle + 0.75*Math.PI) }"
+        y2="${ shipPair[1].yOuter - 8 * Math.sin(shipPair[1].angle + 0.75*Math.PI) }"
+        stroke="yellow"
+        stroke-width="0.5px">
+      </line>
+
+      <line
+        x1="${ shipPair[0].xOuterF }"
+        y1="${ shipPair[0].yOuterF }"
+        x2="${ shipPair[0].xOuter + 8 * Math.cos(shipPair[0].angle + 0.25*Math.PI) }"
+        y2="${ shipPair[0].yOuter - 8 * Math.sin(shipPair[0].angle + 0.25*Math.PI) }"
+        stroke="yellow"
+        stroke-width="0.5px">
+      </line>
     `;
   }
 }
