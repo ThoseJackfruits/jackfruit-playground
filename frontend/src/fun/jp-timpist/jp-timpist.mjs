@@ -117,12 +117,12 @@ class JPTimpistElement extends LitElement {
   getRadiusGetter() {
     switch (this.data.fieldType) {
       case 'circle':
-        return (angle, i) => ({ outer: 40, inner: 5 });
+        return (angle, i) => ({ outer: 40, inner: 5, innerOffsetY: 30 });
       case 'ellipse':
         return (angle, i) => {
           let outer = 30 + 15 * (1 - Math.abs(Math.cos(angle)));
           let inner = outer * 0.2;
-          return { outer, inner };
+          return { outer, inner, innerOffsetY: 10 };
         };
       case 'peanut':
         return (angle, i) => {
@@ -131,7 +131,7 @@ class JPTimpistElement extends LitElement {
             15 * Math.abs(Math.sin(angle)) ** 1.2 -
             15 * Math.abs(Math.cos(angle)) ** 1.8;
           let inner = 5;
-          return { outer, inner };
+          return { outer, inner, innerOffsetY: 5 };
         };
       case 'star':
         return (angle, i) => {
@@ -141,7 +141,7 @@ class JPTimpistElement extends LitElement {
             outer = 20;
             inner = 3.5;
           }
-          return { outer, inner };
+          return { outer, inner, innerOffsetY: 15 };
         };
       case 'square-rounded':
         return (angle, i) => {
@@ -150,7 +150,7 @@ class JPTimpistElement extends LitElement {
 
           outer *= Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle));
 
-          return { outer, inner };
+          return { outer, inner, innerOffsetY: 35 };
         };
       case 'square-sharp':
         return (angle, i) => {
@@ -160,7 +160,7 @@ class JPTimpistElement extends LitElement {
           let outer = maxComponent > 0 ? 40 / maxComponent : 40;
           let inner = 5;
 
-          return { outer, inner };
+          return { outer, inner, innerOffsetY: 35 };
         };
     }
   }
@@ -228,18 +228,18 @@ class JPTimpistElement extends LitElement {
     let shipIndex = shipFloor % pointPairs.length;
     let shipPair = pointPairs[shipIndex];
     let shipR = 0.5 * Math.sqrt(lerp(
-      shipPair[0].rOuterN,
-      shipPair[1].rOuterN,
+      shipPair[0].rOuter - shipPair[0].rInner,
+      shipPair[1].rOuter - shipPair[1].rInner,
       this.data.ship - shipFloor
     ));
     let shipX = lerp(
-      shipPair[0].xOuterN,
-      shipPair[1].xOuterN,
+      shipPair[0].xOuter,
+      shipPair[1].xOuter,
       this.data.ship - shipFloor
     );
     let shipY = lerp(
-      shipPair[0].yOuterN,
-      shipPair[1].yOuterN,
+      shipPair[0].yOuter,
+      shipPair[1].yOuter,
       this.data.ship - shipFloor
     );
 
@@ -250,10 +250,10 @@ class JPTimpistElement extends LitElement {
         pair => pair[0].angle,
         pair => svg`
         <line
-          x1="${ pair[0].xInner }"
-          y1="${ pair[0].yInner }"
-          x2="${ pair[1].xInner }"
-          y2="${ pair[1].yInner }"
+          x1="${ pair[0].xInnerF }"
+          y1="${ pair[0].yInnerF }"
+          x2="${ pair[1].xInnerF }"
+          y2="${ pair[1].yInnerF }"
           stroke-width="0.5px">
         </line>
       `) }
@@ -264,10 +264,10 @@ class JPTimpistElement extends LitElement {
         point => point.angle,
         point => svg`
         <line
-          x1="${ point.xInner }"
-          y1="${ point.yInner }"
-          x2="${ point.xOuter }"
-          y2="${ point.yOuter }"
+          x1="${ point.xInnerF }"
+          y1="${ point.yInnerF }"
+          x2="${ point.xOuterF }"
+          y2="${ point.yOuterF }"
           stroke-width="0.5px">
         </line>
       `) }
@@ -278,10 +278,10 @@ class JPTimpistElement extends LitElement {
         pair => pair[0].angle,
         pair => svg`
         <line
-          x1="${ pair[0].xOuter }"
-          y1="${ pair[0].yOuter }"
-          x2="${ pair[1].xOuter }"
-          y2="${ pair[1].yOuter }"
+          x1="${ pair[0].xOuterF }"
+          y1="${ pair[0].yOuterF }"
+          x2="${ pair[1].xOuterF }"
+          y2="${ pair[1].yOuterF }"
           stroke-width="0.5px">
         </line>
       `) }
