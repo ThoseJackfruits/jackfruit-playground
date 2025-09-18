@@ -41,18 +41,24 @@ export function * getFieldPoints(n, {
 
     angle = angle.toFixed(2);
     let
+      rOuter = outer.toFixed(2),
       xOuter = (50 + sin * outer).toFixed(2),
       yOuter = (50 + cos * outer).toFixed(2),
+      rInner = inner.toFixed(2),
       xInner = (50 + sin * inner).toFixed(2),
       yInner = (50 + cos * inner).toFixed(2);
 
     yield {
       angle,
       angleN: +angle,
+      rOuter,
+      rOuterN: +rOuter,
       xOuter,
       xOuterN: +xOuter,
       yOuter,
       yOuterN: +yOuter,
+      rInner,
+      rInnerN: +rInner,
       xInner,
       xInnerN: +xInner,
       yInner,

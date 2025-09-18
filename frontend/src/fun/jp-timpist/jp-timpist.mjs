@@ -227,6 +227,11 @@ class JPTimpistElement extends LitElement {
     let shipFloor = Math.floor(this.data.ship);
     let shipIndex = shipFloor % pointPairs.length;
     let shipPair = pointPairs[shipIndex];
+    let shipR = 0.5 * Math.sqrt(lerp(
+      shipPair[0].rOuterN,
+      shipPair[1].rOuterN,
+      this.data.ship - shipFloor
+    ));
     let shipX = lerp(
       shipPair[0].xOuterN,
       shipPair[1].xOuterN,
@@ -284,7 +289,8 @@ class JPTimpistElement extends LitElement {
       <circle
         cx="${ shipX }"
         cy="${ shipY }"
-        r="2"
+        r="${ shipR }"
+        stroke="transparent"
         fill="green">
       </circle>
     `;
