@@ -117,12 +117,12 @@ class JPTimpistElement extends LitElement {
   getRadiusGetter() {
     switch (this.data.fieldType) {
       case 'circle':
-        return (angle, i) => ({ outer: 40, inner: 5, innerOffsetY: 30 });
+        return (angle, i) => ({ outer: 40, inner: 5, innerOffsetY: 20 });
       case 'ellipse':
         return (angle, i) => {
           let outer = 30 + 15 * (1 - Math.abs(Math.cos(angle)));
-          let inner = outer * 0.2;
-          return { outer, inner, innerOffsetY: 10 };
+          let inner = Math.sqrt(outer) * 2;
+          return { outer, inner };
         };
       case 'peanut':
         return (angle, i) => {
@@ -131,7 +131,7 @@ class JPTimpistElement extends LitElement {
             15 * Math.abs(Math.sin(angle)) ** 1.2 -
             15 * Math.abs(Math.cos(angle)) ** 1.8;
           let inner = 5;
-          return { outer, inner, innerOffsetY: 5 };
+          return { outer, inner, innerOffsetY: 3 };
         };
       case 'star':
         return (angle, i) => {
@@ -141,7 +141,7 @@ class JPTimpistElement extends LitElement {
             outer = 20;
             inner = 3.5;
           }
-          return { outer, inner, innerOffsetY: 15 };
+          return { outer, inner, innerOffsetY: 3 };
         };
       case 'square-rounded':
         return (angle, i) => {
@@ -150,7 +150,7 @@ class JPTimpistElement extends LitElement {
 
           outer *= Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle));
 
-          return { outer, inner, innerOffsetY: 35 };
+          return { outer, inner, innerOffsetY: 20 };
         };
       case 'square-sharp':
         return (angle, i) => {
@@ -160,7 +160,7 @@ class JPTimpistElement extends LitElement {
           let outer = maxComponent > 0 ? 40 / maxComponent : 40;
           let inner = 5;
 
-          return { outer, inner, innerOffsetY: 35 };
+          return { outer, inner, innerOffsetY: 20 };
         };
     }
   }

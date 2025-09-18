@@ -37,7 +37,7 @@ const TAU = 2 * Math.PI;
  */
 export function * getFieldPoints(n, {
   getRadius=(angle, i) => ({ outer: 40, inner: 5 }),
-  offsetAngular=0
+  offsetAngular=0.5
 }={}) {
   const shiftPerPoint = TAU / n;
   const offsetScaled = offsetAngular * shiftPerPoint;
@@ -45,7 +45,7 @@ export function * getFieldPoints(n, {
     let angle = i * shiftPerPoint + offsetScaled;
     let sin = Math.sin(angle);
     let cos = Math.cos(angle);
-    let { outer, inner, innerOffsetY } = getRadius(angle, i);
+    let { outer, inner, innerOffsetY=0 } = getRadius(angle, i);
 
     angle = angle.toFixed(2);
     let
