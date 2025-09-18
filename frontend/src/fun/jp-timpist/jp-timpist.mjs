@@ -117,7 +117,7 @@ class JPTimpistElement extends LitElement {
   getRadiusGetter() {
     switch (this.data.fieldType) {
       case 'circle':
-        return (angle, i) => ({ outer: 40, inner: 5, innerOffsetY: 20 });
+        return (angle, i) => ({ outer: 40, inner: 5, innerOffsetY: 10 });
       case 'ellipse':
         return (angle, i) => {
           let outer = 30 + 15 * (1 - Math.abs(Math.cos(angle)));
