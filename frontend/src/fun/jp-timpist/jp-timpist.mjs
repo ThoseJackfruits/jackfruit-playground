@@ -110,6 +110,7 @@ class JPTimpistElement extends LitElement {
   handleFieldTypeChange(event) {
     let fieldType = event.target.value;
     this.data = { ...this.data, fieldType };
+    Object.assign(this.data, this.getFieldLineData());
     let usp = new URLSearchParams(location.search);
     usp.set('preview-type', fieldType);
     history.replaceState({}, '', `?${ usp.toString() }`);
