@@ -38,12 +38,25 @@ export function * getFieldPoints(n, {
     let sin = Math.sin(angle);
     let cos = Math.cos(angle);
     let { outer, inner } = getRadius(angle, i);
+
+    angle = angle.toFixed(2);
+    let
+      xOuter = (50 + sin * outer).toFixed(2),
+      yOuter = (50 + cos * outer).toFixed(2),
+      xInner = (50 + sin * inner).toFixed(2),
+      yInner = (50 + cos * inner).toFixed(2);
+
     yield {
-      angle: angle.toFixed(2),
-      xOuter: (50 + sin * outer).toFixed(2),
-      yOuter: (50 + cos * outer).toFixed(2),
-      xInner: (50 + sin * inner).toFixed(2),
-      yInner: (50 + cos * inner).toFixed(2),
-    };
+      angle,
+      angleN: +angle,
+      xOuter,
+      xOuterN: +xOuter,
+      yOuter,
+      yOuterN: +yOuter,
+      xInner,
+      xInnerN: +xInner,
+      yInner,
+      yInnerN: +yInner,
+    }
   }
 }

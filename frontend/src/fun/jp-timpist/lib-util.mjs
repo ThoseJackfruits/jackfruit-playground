@@ -1,3 +1,7 @@
+export function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
 export function * pairs(iterable) {
   let iterator = iterable[Symbol.iterator]();
   let { value: first, done } = iterator.next();
@@ -5,11 +9,20 @@ export function * pairs(iterable) {
     return;
   }
 
+  let veryFirst = first;
+  let veryLast;
+
   let { value: second, done: secondDone } = iterator.next();
   while (!secondDone) {
+    if (second)
+      veryLast = second;
     yield [ first, second ];
     first = second;
     ({ value: second, done: secondDone } = iterator.next());
+  }
+
+  if (veryFirst && veryLast) {
+    yield [ veryLast, veryFirst ];
   }
 }
 

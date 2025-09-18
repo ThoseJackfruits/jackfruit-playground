@@ -1,7 +1,7 @@
 import { LitElement, html, css, svg } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import { getFieldPoints } from './lib-field.mjs';
-import { pairs } from './lib-util.mjs';
+import { lerp, pairs } from './lib-util.mjs';
 
 const FIELD_TYPE_OPTIONS = Object.freeze([
   { label: 'Circle', value: 'circle' },
@@ -17,6 +17,8 @@ const STATE = Object.freeze({
   PAUSE: 'pause',
   PLAY: 'play'
 });
+
+const jpRAF = Symbol('raf');
 
 class JPTimpistElement extends LitElement {
   static properties = {
@@ -75,8 +77,11 @@ class JPTimpistElement extends LitElement {
     let usp = new URLSearchParams(location.search);
     this.data = {
       fieldLineCount: usp.get('preview-line-count') || 11,
-      fieldType: usp.get('preview-type') || 'circle'
+      fieldType: usp.get('preview-type') || 'circle',
+      ship: 0
     };
+
+    this.rafStart();
   }
 
   disconnectedCallback() {
@@ -106,6 +111,8 @@ class JPTimpistElement extends LitElement {
   handleSubmit(event) {
     event.preventDefault();
   }
+
+  // API ///////////////////////////////////////////////////////////////////////
 
   getRadiusGetter() {
     switch (this.data.fieldType) {
@@ -158,6 +165,21 @@ class JPTimpistElement extends LitElement {
     }
   }
 
+  moveShip = () => {
+    this.data = {
+      ...this.data,
+      ship: this.data.ship + 0.01
+    }
+  };
+
+  rafStart = () => {
+    try {
+      this.moveShip();
+    } finally {
+      requestAnimationFrame(this.rafStart);
+    }
+  };
+
   // RENDER ////////////////////////////////////////////////////////////////////
 
   render() {
@@ -202,6 +224,20 @@ class JPTimpistElement extends LitElement {
     });
     const [ ...pointPairs ] = pairs(points);
 
+    let shipFloor = Math.floor(this.data.ship);
+    let shipIndex = shipFloor % pointPairs.length;
+    let shipPair = pointPairs[shipIndex];
+    let shipX = lerp(
+      shipPair[0].xOuterN,
+      shipPair[1].xOuterN,
+      this.data.ship - shipFloor
+    );
+    let shipY = lerp(
+      shipPair[0].yOuterN,
+      shipPair[1].yOuterN,
+      this.data.ship - shipFloor
+    );
+
     return svg`
       <!-- Inside path -->
       ${ repeat(
@@ -244,6 +280,13 @@ class JPTimpistElement extends LitElement {
           stroke-width="0.5px">
         </line>
       `) }
+
+      <circle
+        cx="${ shipX }"
+        cy="${ shipY }"
+        r="2"
+        fill="green">
+      </circle>
     `;
   }
 
