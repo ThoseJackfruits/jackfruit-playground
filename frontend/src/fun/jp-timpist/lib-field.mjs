@@ -41,6 +41,7 @@ export function * getFieldPoints(n, {
 }={}) {
   const shiftPerPoint = TAU / n;
   const offsetScaled = offsetAngular * shiftPerPoint;
+
   for (let i = 0; i < n; i++) {
     let angle = i * shiftPerPoint + offsetScaled;
     let sin = Math.sin(angle);

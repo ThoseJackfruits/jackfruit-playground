@@ -270,44 +270,47 @@ class JPTimpistElement extends LitElement {
       <!-- Inside path -->
       ${ repeat(
         pointPairs,
-        pair => pair[0].angle,
+        pair => pair[0].angleF,
         pair => svg`
-        <line
-          x1="${ pair[0].xInnerF }"
-          y1="${ pair[0].yInnerF }"
-          x2="${ pair[1].xInnerF }"
-          y2="${ pair[1].yInnerF }"
-          stroke-width="0.5px">
-        </line>
-      `) }
+          <line
+            x1="${ pair[0].xInnerF }"
+            y1="${ pair[0].yInnerF }"
+            x2="${ pair[1].xInnerF }"
+            y2="${ pair[1].yInnerF }"
+            stroke-width="0.5px">
+          </line>
+        `
+      ) }
 
       <!-- Inside-outside lines -->
       ${ repeat(
         points,
-        point => point.angle,
+        point => point.angleF,
         point => svg`
-        <line
-          x1="${ point.xInnerF }"
-          y1="${ point.yInnerF }"
-          x2="${ point.xOuterF }"
-          y2="${ point.yOuterF }"
-          stroke-width="0.5px">
-        </line>
-      `) }
+          <line
+            x1="${ point.xInnerF }"
+            y1="${ point.yInnerF }"
+            x2="${ point.xOuterF }"
+            y2="${ point.yOuterF }"
+            stroke-width="0.5px">
+          </line>
+        `
+      ) }
 
       <!-- Outside path -->
       ${ repeat(
         pointPairs,
-        pair => pair[0].angle,
+        pair => pair[0].angleF,
         pair => svg`
-        <line
-          x1="${ pair[0].xOuterF }"
-          y1="${ pair[0].yOuterF }"
-          x2="${ pair[1].xOuterF }"
-          y2="${ pair[1].yOuterF }"
-          stroke-width="0.5px">
-        </line>
-      `) }
+          <line
+            x1="${ pair[0].xOuterF }"
+            y1="${ pair[0].yOuterF }"
+            x2="${ pair[1].xOuterF }"
+            y2="${ pair[1].yOuterF }"
+            stroke-width="0.5px">
+          </line>
+        `
+      ) }
     `;
   }
 
