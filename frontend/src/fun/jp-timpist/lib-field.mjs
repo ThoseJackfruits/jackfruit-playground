@@ -82,19 +82,19 @@ export function * getFieldPoints(n, {
       angleActual,
       angleActualF,
 
-      rOuter,
-      rOuterF,
-      xOuter,
-      xOuterF,
-      yOuter,
-      yOuterF,
-
       rInner,
       rInnerF,
       xInner,
       xInnerF,
       yInner,
       yInnerF,
+
+      rOuter,
+      rOuterF,
+      xOuter,
+      xOuterF,
+      yOuter,
+      yOuterF,
 
       rShip,
       rShipF,

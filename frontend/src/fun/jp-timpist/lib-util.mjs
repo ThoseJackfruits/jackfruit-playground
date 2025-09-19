@@ -1,3 +1,7 @@
+export function avg2(a, b) {
+  return (a + b) / 2;
+}
+
 export function lerp(a, b, t) {
   return a + (b - a) * t;
 }

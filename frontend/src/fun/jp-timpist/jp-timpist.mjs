@@ -1,7 +1,8 @@
 import { LitElement, html, css, svg } from 'lit';
+import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { getFieldPoints } from './lib-field.mjs';
-import { lerp, pairs } from './lib-util.mjs';
+import * as util from './lib-util.mjs';
 
 const FIELD_TYPE_OPTIONS = Object.freeze([
   { label: 'Circle', value: 'circle' },
@@ -12,11 +13,15 @@ const FIELD_TYPE_OPTIONS = Object.freeze([
   { label: 'Star', value: 'star' },
 ]);
 
+const LASER_BLOB_TRAVEL_TIME = 800;
+
 const STATE = Object.freeze({
   PREVIEW: 'preview',
   PAUSE: 'pause',
   PLAY: 'play'
 });
+
+const jpKeysPressed = Symbol('keysPressed');
 
 class JPTimpistElement extends LitElement {
   static properties = {
@@ -60,12 +65,35 @@ class JPTimpistElement extends LitElement {
       max-width: 100%;
       max-height: 100%;
       margin-top: var(--jp-common-padding);
-      stroke: var(--jp-color-text);
       stroke-linecap: round;
       overflow: hidden;
       flex-shrink: 1;
     }
+
+    svg .field:not(.ship) {
+      stroke: var(--jp-color-text);
+    }
+
+    svg .laserblob {
+      color: salmon;
+    }
+
+    svg .ship {
+      color: goldenrod;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      svg .laserblob {
+        color: pink;
+      }
+
+      svg .ship {
+        color: yellow;
+      }
+    }
   `;
+
+  [jpKeysPressed] = new Set;
 
   // LIFECYCLE /////////////////////////////////////////////////////////////////
 
@@ -77,12 +105,15 @@ class JPTimpistElement extends LitElement {
     this.data = {
       fieldLineCount,
       fieldType: usp.get('preview-type') || 'circle',
-      ship: 0
+      laserBlobs: [],
+      ship: 0,
+      shipFloor: 0,
+      shipIndex: 0
     };
 
     Object.assign(this.data, this.getFieldLineData());
 
-    this.rafStart();
+    this.raffertyDownToBakerStreet();
   }
 
   disconnectedCallback() {
@@ -116,6 +147,44 @@ class JPTimpistElement extends LitElement {
     history.replaceState({}, '', `?${ usp.toString() }`);
   }
 
+  handleKeyDown(event) {
+    switch (event.key) {
+      case ' ':
+        this.handleKeyDownSpace(event)
+        break;
+    }
+  }
+
+  handleKeyDownSpace(event) {
+    event.preventDefault()
+    if (this[jpKeysPressed].has(event.key))
+      return;
+    this[jpKeysPressed].add(event.key);
+    let { fieldLinePointPairs } = this.data;
+    let index = Math.floor(this.data.ship) % fieldLinePointPairs.length;
+    let time = Date.now();
+    let key = `${ index }-${ time }`
+    let [ fl1, fl2 ] = fieldLinePointPairs.at(index)
+    this.data.laserBlobs.push({
+      key,
+      index,
+      time
+    });
+
+    // NaN alert
+    let fTime = time - LASER_BLOB_TRAVEL_TIME * 2;
+    if (this.data.laserBlobs[0]?.time < fTime) {
+      this.data.laserBlobs = this.data.laserBlobs
+        .filter(blob => blob.time > fTime)
+    }
+
+    this.data = { ...this.data };
+  }
+
+  handleKeyUp(event) {
+    this[jpKeysPressed].delete(event.key);
+  }
+
   handleWheel(event) {
     let dist = event.deltaY;
     switch (event.deltaMode) {
@@ -129,6 +198,9 @@ class JPTimpistElement extends LitElement {
     }
 
     this.data.ship += dist;
+    this.data.shipFloor = Math.floor(this.data.ship);
+    this.data.shipIndex =
+      this.data.shipFloor % this.data.fieldLinePointPairs.length;
     this.data = { ...this.data };
   }
 
@@ -143,7 +215,31 @@ class JPTimpistElement extends LitElement {
       getRadius: this.getRadiusGetter(),
       offset: 0.5
     });
-    const [ ...fieldLinePointPairs ] = pairs(fieldLinePoints);
+    const [ ...fieldLinePointPairs ] = util.pairs(fieldLinePoints);
+
+    for (let pair of fieldLinePointPairs) {
+      let [ fl0, fl1 ] = pair;
+      let
+        xOuterF = util.avg2(fl0.xOuter, fl1.xOuter).toFixed(2),
+        xOuter  = +xOuterF,
+        yOuterF = util.avg2(fl0.yOuter, fl1.yOuter).toFixed(2),
+        yOuter  = +yOuterF,
+        xInnerF = util.avg2(fl0.xInner, fl1.xInner).toFixed(2),
+        xInner = +xInnerF,
+        yInnerF = util.avg2(fl0.yInner, fl1.yInner).toFixed(2),
+        yInner = +yInnerF;
+
+      pair.meta = {
+        xInner,
+        xInnerF,
+        yInner,
+        yInnerF,
+        xOuter,
+        xOuterF,
+        yOuter,
+        yOuterF,
+      };
+    }
 
     return {
       fieldLinePoints,
@@ -209,14 +305,14 @@ class JPTimpistElement extends LitElement {
     }
   };
 
-  rafStart = () => {
+  raffertyDownToBakerStreet = () => {
     if (!this.isConnected)
       return;
 
     try {
-      // this.moveShip();
+      this.requestUpdate();
     } finally {
-      requestAnimationFrame(this.rafStart);
+      requestAnimationFrame(this.raffertyDownToBakerStreet);
     }
   };
 
@@ -255,16 +351,26 @@ class JPTimpistElement extends LitElement {
         </div>
       </form>
       <svg
+        @keydown="${ this.handleKeyDown }"
+        @keyup="${ this.handleKeyUp }"
         @wheel="${ this.handleWheel }"
+        tabindex="0"
         viewBox="0 0 100 100">
         ${ this.renderField() }
+        ${ this.renderLaserBlobs() }
         ${ this.renderShip() }
       </svg>
     `;
   }
 
   renderField() {
-    const { fieldLinePoints: points, fieldLinePointPairs: pointPairs } = this.data;
+    const {
+      fieldLinePoints: points,
+      fieldLinePointPairs: pointPairs,
+      shipIndex
+    } = this.data;
+
+    let [ flShip0, flShip1 ] = pointPairs.at(shipIndex);
 
     return svg`
       <!-- Inside path -->
@@ -273,10 +379,12 @@ class JPTimpistElement extends LitElement {
         pair => pair[0].angleF,
         pair => svg`
           <line
+            class="field"
             x1="${ pair[0].xInnerF }"
             y1="${ pair[0].yInnerF }"
             x2="${ pair[1].xInnerF }"
             y2="${ pair[1].yInnerF }"
+            stroke="currentColor"
             stroke-width="0.5px">
           </line>
         `
@@ -288,10 +396,15 @@ class JPTimpistElement extends LitElement {
         point => point.angleF,
         point => svg`
           <line
+            class="${ classMap({
+              field: true,
+              ship: point === flShip0 || point === flShip1
+            }) }"
             x1="${ point.xInnerF }"
             y1="${ point.yInnerF }"
             x2="${ point.xOuterF }"
             y2="${ point.yOuterF }"
+            stroke="currentColor"
             stroke-width="0.5px">
           </line>
         `
@@ -303,10 +416,12 @@ class JPTimpistElement extends LitElement {
         pair => pair[0].angleF,
         pair => svg`
           <line
+            class="field"
             x1="${ pair[0].xOuterF }"
             y1="${ pair[0].yOuterF }"
             x2="${ pair[1].xOuterF }"
             y2="${ pair[1].yOuterF }"
+            stroke="currentColor"
             stroke-width="0.5px">
           </line>
         `
@@ -314,23 +429,58 @@ class JPTimpistElement extends LitElement {
     `;
   }
 
+  renderLaserBlobs() {
+    let {
+      fieldLinePointPairs,
+      laserBlobs
+    } = this.data;
+
+    let now = Date.now()
+
+    return repeat(
+      laserBlobs,
+      blob => blob.key,
+      blob => {
+        let { meta } = fieldLinePointPairs.at(blob.index);
+        let tt = (now - blob.time) / LASER_BLOB_TRAVEL_TIME;
+        if (tt >= 1)
+          return '';
+        return svg`
+          <circle
+            class="laserblob"
+            cx="${ util.lerp(meta.xOuter, meta.xInner, tt) }"
+            cy="${ util.lerp(meta.yOuter, meta.yInner, tt) }"
+            r="${  util.lerp(2,           0.5,           tt) }"
+            fill="currentColor"
+            stroke="none">
+          </circle>
+        `;
+      }
+    )
+  }
+
   renderShip() {
-    const { fieldLinePoints: points, fieldLinePointPairs: pointPairs } = this.data;
-    let shipFloor = Math.floor(this.data.ship);
-    let shipIndex = shipFloor % pointPairs.length;
-    let shipT = this.data.ship - shipFloor;
+    const {
+      fieldLinePoints: points,
+      fieldLinePointPairs: pointPairs,
+      ship,
+      shipFloor,
+      shipIndex
+    } = this.data;
+
+    let shipT = ship - shipFloor;
     let shipPair = pointPairs.at(shipIndex);
-    let shipX = lerp(
+    let shipX = util.lerp(
       shipPair[0].xShip,
       shipPair[1].xShip,
       shipT
     );
-    let shipY = lerp(
+    let shipY = util.lerp(
       shipPair[0].yShip,
       shipPair[1].yShip,
       shipT
     );
-    let shipAngle = lerp(
+    let shipAngle = util.lerp(
       shipPair[0].angleActual,
       shipPair[1].angleActual,
       shipT
@@ -347,20 +497,22 @@ class JPTimpistElement extends LitElement {
         offset => offset,
         offset => svg`
           <line
+            class="ship"
             x1="${ shipPair[0].xOuterF }"
             y1="${ shipPair[0].yOuterF }"
             x2="${ shipX+shipAngleC*offset }"
             y2="${ shipY-shipAngleS*offset }"
-            stroke="yellow"
+            stroke="currentColor"
             stroke-width="0.5px">
           </line>
 
           <line
+            class="ship"
             x1="${ shipPair[1].xOuterF }"
             y1="${ shipPair[1].yOuterF }"
             x2="${ shipX-shipAngleC*offset }"
             y2="${ shipY+shipAngleS*offset }"
-            stroke="yellow"
+            stroke="currentColor"
             stroke-width="0.5px">
           </line>
       `) }
@@ -368,20 +520,22 @@ class JPTimpistElement extends LitElement {
       <!-- Ship arms -->
 
       <line
+        class="ship"
         x1="${ shipPair[1].xOuterF }"
         y1="${ shipPair[1].yOuterF }"
         x2="${ shipPair[1].xOuter + 8 * Math.cos(shipPair[1].angle + 0.75*Math.PI) }"
         y2="${ shipPair[1].yOuter - 8 * Math.sin(shipPair[1].angle + 0.75*Math.PI) }"
-        stroke="yellow"
+        stroke="currentColor"
         stroke-width="0.5px">
       </line>
 
       <line
+        class="ship"
         x1="${ shipPair[0].xOuterF }"
         y1="${ shipPair[0].yOuterF }"
         x2="${ shipPair[0].xOuter + 8 * Math.cos(shipPair[0].angle + 0.25*Math.PI) }"
         y2="${ shipPair[0].yOuter - 8 * Math.sin(shipPair[0].angle + 0.25*Math.PI) }"
-        stroke="yellow"
+        stroke="currentColor"
         stroke-width="0.5px">
       </line>
     `;
