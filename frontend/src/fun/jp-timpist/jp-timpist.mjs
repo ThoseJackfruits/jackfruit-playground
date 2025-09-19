@@ -113,13 +113,22 @@ class JPTimpistElement extends LitElement {
 
     Object.assign(this.data, this.getFieldLineData());
 
+    document.addEventListener('keydown', this.handleKeyDown);
+    document.addEventListener('keyup', this.handleKeyUp);
+
     this.raffertyDownToBakerStreet();
   }
 
   disconnectedCallback() {
+    document.removeEventListener('keydown', this.handleKeyDown);
+    document.removeEventListener('keyup', this.handleKeyUp);
     this.data = null;
     this.state = null;
     super.disconnectedCallback();
+  }
+
+  updated() {
+    this.svgElement = this.shadowRoot.querySelector('svg');
   }
 
   // EVENT HANDLERS //////////////////////////////////////////////////////////
@@ -147,13 +156,15 @@ class JPTimpistElement extends LitElement {
     history.replaceState({}, '', `?${ usp.toString() }`);
   }
 
-  handleKeyDown(event) {
+  handleKeyDown = event => {
+    if (!this.shouldHandleKeyEvent(event))
+      return;
     switch (event.key) {
       case ' ':
         this.handleKeyDownSpace(event)
         break;
     }
-  }
+  };
 
   handleKeyDownSpace(event) {
     event.preventDefault()
@@ -181,9 +192,11 @@ class JPTimpistElement extends LitElement {
     this.data = { ...this.data };
   }
 
-  handleKeyUp(event) {
+  handleKeyUp = event => {
+    if (!this.shouldHandleKeyEvent(event))
+      return;
     this[jpKeysPressed].delete(event.key);
-  }
+  };
 
   handleWheel(event) {
     let dist = event.deltaY;
@@ -315,6 +328,14 @@ class JPTimpistElement extends LitElement {
       requestAnimationFrame(this.raffertyDownToBakerStreet);
     }
   };
+
+  shouldHandleKeyEvent(event) {
+    return (
+      event.target === this.svgElement ||
+      event.target === this ||
+      event.target === document.body
+    );
+  }
 
   // RENDER ////////////////////////////////////////////////////////////////////
 
