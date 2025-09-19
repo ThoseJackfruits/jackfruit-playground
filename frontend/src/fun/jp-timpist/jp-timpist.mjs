@@ -88,7 +88,7 @@ class JPTimpistElement extends LitElement {
       }
 
       svg .ship {
-        color: yellow;
+        color: gold;
       }
     }
   `;
