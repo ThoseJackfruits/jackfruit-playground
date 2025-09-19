@@ -233,20 +233,28 @@ class JPTimpistElement extends LitElement {
     for (let pair of fieldLinePointPairs) {
       let [ fl0, fl1 ] = pair;
       let
+        rOuterF = util.avg2(fl0.rOuter, fl1.rOuter).toFixed(2),
+        rOuter  = +rOuterF,
         xOuterF = util.avg2(fl0.xOuter, fl1.xOuter).toFixed(2),
         xOuter  = +xOuterF,
         yOuterF = util.avg2(fl0.yOuter, fl1.yOuter).toFixed(2),
         yOuter  = +yOuterF,
+        rInnerF = util.avg2(fl0.rInner, fl1.rInner).toFixed(2),
+        rInner  = +rInnerF,
         xInnerF = util.avg2(fl0.xInner, fl1.xInner).toFixed(2),
         xInner = +xInnerF,
         yInnerF = util.avg2(fl0.yInner, fl1.yInner).toFixed(2),
         yInner = +yInnerF;
 
       pair.meta = {
+        rInner,
+        rInnerF,
         xInner,
         xInnerF,
         yInner,
         yInnerF,
+        rOuter,
+        rOuterF,
         xOuter,
         xOuterF,
         yOuter,
@@ -509,6 +517,7 @@ class JPTimpistElement extends LitElement {
 
     let shipAngleC = Math.cos(shipAngle);
     let shipAngleS = Math.sin(shipAngle);
+    let armLength = shipPair.meta.rOuter / 5;
 
     return svg`
       <!-- Ship base -->
@@ -544,8 +553,8 @@ class JPTimpistElement extends LitElement {
         class="ship"
         x1="${ shipPair[1].xOuterF }"
         y1="${ shipPair[1].yOuterF }"
-        x2="${ shipPair[1].xOuter + 8 * Math.cos(shipPair[1].angle + 0.75*Math.PI) }"
-        y2="${ shipPair[1].yOuter - 8 * Math.sin(shipPair[1].angle + 0.75*Math.PI) }"
+        x2="${ shipPair[1].xOuter + armLength * Math.cos(shipPair[1].angle + 0.75*Math.PI) }"
+        y2="${ shipPair[1].yOuter - armLength * Math.sin(shipPair[1].angle + 0.75*Math.PI) }"
         stroke="currentColor"
         stroke-width="0.5px">
       </line>
@@ -554,8 +563,8 @@ class JPTimpistElement extends LitElement {
         class="ship"
         x1="${ shipPair[0].xOuterF }"
         y1="${ shipPair[0].yOuterF }"
-        x2="${ shipPair[0].xOuter + 8 * Math.cos(shipPair[0].angle + 0.25*Math.PI) }"
-        y2="${ shipPair[0].yOuter - 8 * Math.sin(shipPair[0].angle + 0.25*Math.PI) }"
+        x2="${ shipPair[0].xOuter + armLength * Math.cos(shipPair[0].angle + 0.25*Math.PI) }"
+        y2="${ shipPair[0].yOuter - armLength * Math.sin(shipPair[0].angle + 0.25*Math.PI) }"
         stroke="currentColor"
         stroke-width="0.5px">
       </line>
