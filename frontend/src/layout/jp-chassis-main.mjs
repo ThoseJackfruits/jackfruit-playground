@@ -50,6 +50,11 @@ class JPChassisMainElement extends LitElement {
     switch (this.currentRoute) {
       case '/':
         return html`<div>
+          <p>
+            The greatest and most important development in all web framework
+            starter pack technology: the distributed, consistent, live-updating
+            counter.
+          </p>
           <jp-counter-dom></jp-counter-dom>
           <jp-counter-lit></jp-counter-lit>
         </div>`;
@@ -67,4 +72,4 @@ class JPChassisMainElement extends LitElement {
 
 customElements.define('jp-chassis-main', JPChassisMainElement);
 
-export { JPChassisMainElement }; 
+export { JPChassisMainElement };
