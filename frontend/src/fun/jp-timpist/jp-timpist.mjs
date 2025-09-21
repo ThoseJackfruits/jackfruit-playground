@@ -1,4 +1,5 @@
 import { LitElement, html, css, svg } from 'lit';
+import { eventOptions } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { getFieldPoints } from './lib-field.mjs';
@@ -25,8 +26,15 @@ const jpKeysPressed = Symbol('keysPressed');
 
 class JPTimpistElement extends LitElement {
   static properties = {
-    state: { type: String, reflect: true },
     data: { state: true },
+    gsFieldLineCount: { state: true },
+    gsFieldType: { state: true },
+    gsLaserBlobs: { state: true },
+    gsShip: { state: true },
+    gsShipFloor: { state: true },
+    gsShipIndex: { state: true },
+    state: { type: String, reflect: true },
+    updateToggle: { state: true }
   };
 
   static styles = css`
@@ -95,31 +103,35 @@ class JPTimpistElement extends LitElement {
 
   [jpKeysPressed] = new Set;
 
+  rsNow;
+
   // LIFECYCLE /////////////////////////////////////////////////////////////////
+
+  constructor() {
+    super();
+    this.state = STATE.PREVIEW
+    let usp = new URLSearchParams(location.search);
+    Object.assign(this, {
+      gsLaserBlobs: [],
+      gsFieldLineCount: usp.get('preview-line-count') || 11,
+      gsFieldType: usp.get('preview-type') || 'circle',
+      gsShip: 0,
+      gsShipFloor: 0,
+      gsShipIndex: 0
+    });
+    Object.assign(this, this.getFieldLineData());
+  }
 
   connectedCallback() {
     super.connectedCallback();
-    this.state = STATE.PREVIEW
-    let usp = new URLSearchParams(location.search);
-    let fieldLineCount = usp.get('preview-line-count') || 11
-    this.data = {
-      fieldLineCount,
-      fieldType: usp.get('preview-type') || 'circle',
-      laserBlobs: [],
-      ship: 0,
-      shipFloor: 0,
-      shipIndex: 0
-    };
-
-    Object.assign(this.data, this.getFieldLineData());
 
     document.addEventListener('keydown', this.handleKeyDown);
     document.addEventListener('keyup', this.handleKeyUp);
-
-    this.raffertyDownToBakerStreet();
   }
 
   disconnectedCallback() {
+    // if (this.rafIndex != null)
+      // this.rafIndex = cancelAnimationFrame(this.rafIndex);
     document.removeEventListener('keydown', this.handleKeyDown);
     document.removeEventListener('keyup', this.handleKeyUp);
     this.data = null;
@@ -127,21 +139,21 @@ class JPTimpistElement extends LitElement {
     super.disconnectedCallback();
   }
 
-  updated() {
+  firstUpdated() {
     this.svgElement = this.shadowRoot.querySelector('svg');
+  }
+
+  updated() {
+    requestAnimationFrame(() => this.updateToggle = !this.updateToggle);
   }
 
   // EVENT HANDLERS //////////////////////////////////////////////////////////
 
   handleFieldLineCountChange(event) {
     let fieldLineCount = event.target.value;
+    this.gsFieldLineCount = fieldLineCount;
 
-    this.data = {
-      ...this.data,
-      fieldLineCount
-    };
-
-    Object.assign(this.data, this.getFieldLineData());
+    Object.assign(this, this.getFieldLineData());
     let usp = new URLSearchParams(location.search);
     usp.set('preview-line-count', fieldLineCount);
     history.replaceState({}, '', `?${ usp.toString() }`);
@@ -150,7 +162,7 @@ class JPTimpistElement extends LitElement {
   handleFieldTypeChange(event) {
     let fieldType = event.target.value;
     this.data = { ...this.data, fieldType };
-    Object.assign(this.data, this.getFieldLineData());
+    Object.assign(this, this.getFieldLineData());
     let usp = new URLSearchParams(location.search);
     usp.set('preview-type', fieldType);
     history.replaceState({}, '', `?${ usp.toString() }`);
@@ -171,25 +183,24 @@ class JPTimpistElement extends LitElement {
     if (this[jpKeysPressed].has(event.key))
       return;
     this[jpKeysPressed].add(event.key);
-    let { fieldLinePointPairs } = this.data;
-    let index = Math.floor(this.data.ship) % fieldLinePointPairs.length;
+    let { gsFieldLinePointPairs } = this;
+    let index = Math.floor(this.gsShip) % gsFieldLinePointPairs.length;
     let time = Date.now();
     let key = `${ index }-${ time }`
-    let [ fl1, fl2 ] = fieldLinePointPairs.at(index)
-    this.data.laserBlobs.push({
+    let [ fl1, fl2 ] = gsFieldLinePointPairs.at(index)
+    this.gsLaserBlobs.push({
       key,
       index,
       time
     });
 
-    // NaN alert
     let fTime = time - LASER_BLOB_TRAVEL_TIME * 2;
-    if (this.data.laserBlobs[0]?.time < fTime) {
-      this.data.laserBlobs = this.data.laserBlobs
-        .filter(blob => blob.time > fTime)
-    }
 
-    this.data = { ...this.data };
+    if (this.gsLaserBlobs[0]?.time < fTime)  // NaN abuse alert
+      this.gsLaserBlobs= this.gsLaserBlobs
+        .filter(blob => blob.time > fTime);
+
+    this.updateToggle = !this.updateToggle;
   }
 
   handleKeyUp = event => {
@@ -210,11 +221,9 @@ class JPTimpistElement extends LitElement {
         break;
     }
 
-    this.data.ship += dist;
-    this.data.shipFloor = Math.floor(this.data.ship);
-    this.data.shipIndex =
-      this.data.shipFloor % this.data.fieldLinePointPairs.length;
-    this.data = { ...this.data };
+    this.gsShip += dist;
+    this.gsShipFloor = Math.floor(this.gsShip);
+    this.gsShipIndex = this.gsShipFloor % this.gsFieldLinePointPairs.length;
   }
 
   handleSubmit(event) {
@@ -224,13 +233,13 @@ class JPTimpistElement extends LitElement {
   // API ///////////////////////////////////////////////////////////////////////
 
   getFieldLineData() {
-    const [ ...fieldLinePoints ] = getFieldPoints(this.data.fieldLineCount, {
+    const [ ...gsFieldLinePoints ] = getFieldPoints(this.gsFieldLineCount, {
       getRadius: this.getRadiusGetter(),
       offset: 0.5
     });
-    const [ ...fieldLinePointPairs ] = util.pairs(fieldLinePoints);
+    const [ ...gsFieldLinePointPairs ] = util.pairs(gsFieldLinePoints);
 
-    for (let pair of fieldLinePointPairs) {
+    for (let pair of gsFieldLinePointPairs) {
       let [ fl0, fl1 ] = pair;
       let
         rOuterF = util.avg2(fl0.rOuter, fl1.rOuter).toFixed(2),
@@ -263,13 +272,13 @@ class JPTimpistElement extends LitElement {
     }
 
     return {
-      fieldLinePoints,
-      fieldLinePointPairs
+      gsFieldLinePoints,
+      gsFieldLinePointPairs
     };
   }
 
   getRadiusGetter() {
-    switch (this.data.fieldType) {
+    switch (this.gsFieldType) {
       case 'circle':
         return (angle, i) => ({ outer: 40, inner: 5, innerOffsetY: 10 });
       case 'ellipse':
@@ -319,24 +328,6 @@ class JPTimpistElement extends LitElement {
     }
   }
 
-  moveShip = () => {
-    this.data = {
-      ...this.data,
-      ship: this.data.ship + 0.01
-    }
-  };
-
-  raffertyDownToBakerStreet = () => {
-    if (!this.isConnected)
-      return;
-
-    try {
-      this.requestUpdate();
-    } finally {
-      requestAnimationFrame(this.raffertyDownToBakerStreet);
-    }
-  };
-
   shouldHandleKeyEvent(event) {
     return (
       event.target === this.svgElement ||
@@ -348,9 +339,7 @@ class JPTimpistElement extends LitElement {
   // RENDER ////////////////////////////////////////////////////////////////////
 
   render() {
-    if (!this.data) {
-      return '';
-    }
+    this.rsNow = Date.now();
 
     return html`
       <form @submit=${ this.handleSubmit }>
@@ -361,7 +350,7 @@ class JPTimpistElement extends LitElement {
               FIELD_TYPE_OPTIONS,
               ({ label, value }) => html`
                 <option
-                  ?selected=${ this.data.fieldType === value }
+                  ?selected=${ this.gsFieldType === value }
                   value="${ value }">${ label }</option>
               `
             ) }
@@ -376,7 +365,7 @@ class JPTimpistElement extends LitElement {
             step="1"
             @input=${ this.handleFieldLineCountChange}
             id="field-line-count"
-            value="${ this.data.fieldLineCount }">
+            value="${ this.gsFieldLineCount }">
         </div>
       </form>
       <svg
@@ -394,10 +383,10 @@ class JPTimpistElement extends LitElement {
 
   renderField() {
     const {
-      fieldLinePoints: points,
-      fieldLinePointPairs: pointPairs,
-      shipIndex
-    } = this.data;
+      gsFieldLinePoints: points,
+      gsFieldLinePointPairs: pointPairs,
+      gsShipIndex: shipIndex
+    } = this;
 
     let [ flShip0, flShip1 ] = pointPairs.at(shipIndex);
 
@@ -460,17 +449,16 @@ class JPTimpistElement extends LitElement {
 
   renderLaserBlobs() {
     let {
-      fieldLinePointPairs,
-      laserBlobs
-    } = this.data;
-
-    let now = Date.now()
+      gsFieldLinePointPairs: pointPairs,
+      rsNow: now
+    } = this;
+    let laserBlobs = this.gsLaserBlobs;
 
     return repeat(
       laserBlobs,
       blob => blob.key,
       blob => {
-        let { meta } = fieldLinePointPairs.at(blob.index);
+        let { meta } = pointPairs.at(blob.index);
         let tt = (now - blob.time) / LASER_BLOB_TRAVEL_TIME;
         if (tt >= 1)
           return '';
@@ -490,12 +478,12 @@ class JPTimpistElement extends LitElement {
 
   renderShip() {
     const {
-      fieldLinePoints: points,
-      fieldLinePointPairs: pointPairs,
-      ship,
-      shipFloor,
-      shipIndex
-    } = this.data;
+      gsFieldLinePoints: points,
+      gsFieldLinePointPairs: pointPairs,
+      gsShip: ship,
+      gsShipFloor: shipFloor,
+      gsShipIndex: shipIndex
+    } = this;
 
     let shipT = ship - shipFloor;
     let shipPair = pointPairs.at(shipIndex);
@@ -571,5 +559,9 @@ class JPTimpistElement extends LitElement {
     `;
   }
 }
+
+// It's just Object.assign under the hood. lit seems to pick up options directly
+// from the handler function's properties.
+eventOptions({ passive: true })(JPTimpistElement.prototype.handleWheel);
 
 customElements.define('jp-timpist', JPTimpistElement);
