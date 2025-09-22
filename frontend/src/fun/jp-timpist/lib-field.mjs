@@ -1,13 +1,13 @@
 const TAU = 2 * Math.PI;
 
 /**
- * @typedef {Object} FieldLineRadius
+ * @typedef {Object} FieldLaneRadius
  * @property {number} outer
  * @property {number} inner
  */
 
 /**
- * @typedef {Object} FieldLine
+ * @typedef {Object} FieldLane
  * @property {number} angle   angle of the point from center, as number
  * @property {string} angleF  angle of the point from center, as fixed
  *
@@ -23,17 +23,17 @@ const TAU = 2 * Math.PI;
  */
 
 /**
- * @typedef {function(number, number): FieldLineRadius} FieldLineRadiusGetter
+ * @typedef {function(number, number): FieldLaneRadius} FieldLaneRadiusGetter
  */
 
 /**
  * @param {number} n
  * @param {Object} opts
- * @param {FieldLineRadiusGetter} opts.getRadius
+ * @param {FieldLaneRadiusGetter} opts.getRadius
  *   Calculates the inner and outer radius for a point at index `i`.
  * @param {number} opts.offsetAngular
  *   The offset of the first point, in units of full turns.
- * @returns {Iterable<FieldLine>}
+ * @returns {Iterable<FieldLane>}
  */
 export function * getFieldPoints(n, {
   getRadius=(angle, i) => ({ outer: 40, inner: 5 }),

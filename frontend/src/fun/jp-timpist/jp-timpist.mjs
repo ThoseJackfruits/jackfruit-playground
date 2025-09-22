@@ -16,6 +16,7 @@ const FIELD_TYPE_OPTIONS = Object.freeze([
 
 const LASER_BLOB_TRAVEL_TIME = 800;
 
+const SHIP_BASE_OFFSETS = Object.freeze([ 1, -1 ]);
 const STATE = Object.freeze({
   PREVIEW: 'preview',
   PAUSE: 'pause',
@@ -27,7 +28,8 @@ const jpKeysPressed = Symbol('keysPressed');
 class JPTimpistElement extends LitElement {
   static properties = {
     data: { state: true },
-    gsFieldLineCount: { state: true },
+    gsEnemies: { state: true },
+    gsFieldLaneCount: { state: true },
     gsFieldType: { state: true },
     gsLaserBlobs: { state: true },
     gsShip: { state: true },
@@ -103,6 +105,7 @@ class JPTimpistElement extends LitElement {
 
   [jpKeysPressed] = new Set;
 
+  rsNowLast;
   rsNow;
 
   // LIFECYCLE /////////////////////////////////////////////////////////////////
@@ -113,25 +116,27 @@ class JPTimpistElement extends LitElement {
     let usp = new URLSearchParams(location.search);
     Object.assign(this, {
       gsLaserBlobs: [],
-      gsFieldLineCount: usp.get('preview-line-count') || 11,
+      gsFieldLaneCount: usp.get('preview-line-count') || 11,
       gsFieldType: usp.get('preview-type') || 'circle',
       gsShip: 0,
       gsShipFloor: 0,
       gsShipIndex: 0
     });
-    Object.assign(this, this.getFieldLineData());
+    Object.assign(this, this.getFieldLaneData());
   }
 
   connectedCallback() {
     super.connectedCallback();
+    let updated;
+    this.rafIndex = this.raffertyDownToBakerStreet();
 
     document.addEventListener('keydown', this.handleKeyDown);
     document.addEventListener('keyup', this.handleKeyUp);
   }
 
   disconnectedCallback() {
-    // if (this.rafIndex != null)
-      // this.rafIndex = cancelAnimationFrame(this.rafIndex);
+    if (this.rafIndex != null)
+      this.rafIndex = cancelAnimationFrame(this.rafIndex);
     document.removeEventListener('keydown', this.handleKeyDown);
     document.removeEventListener('keyup', this.handleKeyUp);
     this.data = null;
@@ -143,26 +148,29 @@ class JPTimpistElement extends LitElement {
     this.svgElement = this.shadowRoot.querySelector('svg');
   }
 
-  updated() {
-    requestAnimationFrame(() => this.updateToggle = !this.updateToggle);
-  }
-
   // EVENT HANDLERS //////////////////////////////////////////////////////////
 
-  handleFieldLineCountChange(event) {
-    let fieldLineCount = event.target.value;
-    this.gsFieldLineCount = fieldLineCount;
+  handleFieldLaneCountChange(event) {
+    let fieldLaneCount = +event.target.value;
+    let diff = fieldLaneCount - this.gsFieldLaneCount;
+    this.gsFieldLaneCount = fieldLaneCount;
+    // Try to maintain (generally) same ship position as we add/remove lanes
+    this.gsShip += this.gsShip / fieldLaneCount * diff;
+    Object.assign(this, this.getFieldLaneData())
+    Object.assign(this, this.getShipData());
+    this.gsLaserBlobs = this.gsLaserBlobs
+      .filter(laserBlob => Math.abs(laserBlob.index) < fieldLaneCount);
 
-    Object.assign(this, this.getFieldLineData());
     let usp = new URLSearchParams(location.search);
-    usp.set('preview-line-count', fieldLineCount);
+    usp.set('preview-line-count', fieldLaneCount);
     history.replaceState({}, '', `?${ usp.toString() }`);
   }
 
   handleFieldTypeChange(event) {
     let fieldType = event.target.value;
-    this.data = { ...this.data, fieldType };
-    Object.assign(this, this.getFieldLineData());
+    this.gsFieldType = fieldType;
+    Object.assign(this, this.getFieldLaneData());
+
     let usp = new URLSearchParams(location.search);
     usp.set('preview-type', fieldType);
     history.replaceState({}, '', `?${ usp.toString() }`);
@@ -183,22 +191,20 @@ class JPTimpistElement extends LitElement {
     if (this[jpKeysPressed].has(event.key))
       return;
     this[jpKeysPressed].add(event.key);
-    let { gsFieldLinePointPairs } = this;
-    let index = Math.floor(this.gsShip) % gsFieldLinePointPairs.length;
+    let index = this.gsShipIndex;
     let time = Date.now();
     let key = `${ index }-${ time }`
-    let [ fl1, fl2 ] = gsFieldLinePointPairs.at(index)
     this.gsLaserBlobs.push({
       key,
       index,
       time
     });
 
-    let fTime = time - LASER_BLOB_TRAVEL_TIME * 2;
+    let gcTime = time - LASER_BLOB_TRAVEL_TIME * 2;
 
-    if (this.gsLaserBlobs[0]?.time < fTime)  // NaN abuse alert
-      this.gsLaserBlobs= this.gsLaserBlobs
-        .filter(blob => blob.time > fTime);
+    if (this.gsLaserBlobs[0]?.time < gcTime)  // NaN abuse alert
+      this.gsLaserBlobs = this.gsLaserBlobs
+        .filter(blob => blob.time > gcTime);
 
     this.updateToggle = !this.updateToggle;
   }
@@ -222,8 +228,7 @@ class JPTimpistElement extends LitElement {
     }
 
     this.gsShip += dist;
-    this.gsShipFloor = Math.floor(this.gsShip);
-    this.gsShipIndex = this.gsShipFloor % this.gsFieldLinePointPairs.length;
+    Object.assign(this, this.getShipData());
   }
 
   handleSubmit(event) {
@@ -232,14 +237,14 @@ class JPTimpistElement extends LitElement {
 
   // API ///////////////////////////////////////////////////////////////////////
 
-  getFieldLineData() {
-    const [ ...gsFieldLinePoints ] = getFieldPoints(this.gsFieldLineCount, {
+  getFieldLaneData() {
+    const [ ...gsFieldLanePoints ] = getFieldPoints(this.gsFieldLaneCount, {
       getRadius: this.getRadiusGetter(),
       offset: 0.5
     });
-    const [ ...gsFieldLinePointPairs ] = util.pairs(gsFieldLinePoints);
+    const [ ...gsFieldLanePointPairs ] = util.pairs(gsFieldLanePoints);
 
-    for (let pair of gsFieldLinePointPairs) {
+    for (let pair of gsFieldLanePointPairs) {
       let [ fl0, fl1 ] = pair;
       let
         rOuterF = util.avg2(fl0.rOuter, fl1.rOuter).toFixed(2),
@@ -272,8 +277,8 @@ class JPTimpistElement extends LitElement {
     }
 
     return {
-      gsFieldLinePoints,
-      gsFieldLinePointPairs
+      gsFieldLanePoints,
+      gsFieldLanePointPairs
     };
   }
 
@@ -328,6 +333,24 @@ class JPTimpistElement extends LitElement {
     }
   }
 
+  getShipData() {
+    let gsShipFloor = Math.floor(this.gsShip);
+    return {
+      gsShipFloor,
+      gsShipIndex: gsShipFloor % this.gsFieldLanePointPairs.length
+    };
+  }
+
+  raffertyDownToBakerStreet() {
+    let updated;
+    let loop = () => {
+      this.updateToggle = !this.updateToggle;
+      requestAnimationFrame(loop);
+    };
+
+    return requestAnimationFrame(loop);
+  }
+
   shouldHandleKeyEvent(event) {
     return (
       event.target === this.svgElement ||
@@ -339,6 +362,7 @@ class JPTimpistElement extends LitElement {
   // RENDER ////////////////////////////////////////////////////////////////////
 
   render() {
+    this.rsNowLast = this.rsNow;
     this.rsNow = Date.now();
 
     return html`
@@ -357,15 +381,15 @@ class JPTimpistElement extends LitElement {
           </select>
         </div>
         <div class="field">
-          <label for="field-line-count">Side count</label>
+          <label for="field-lane-count">Side count</label>
           <input
             type="range"
             min="3"
             max="20"
             step="1"
-            @input=${ this.handleFieldLineCountChange}
-            id="field-line-count"
-            value="${ this.gsFieldLineCount }">
+            @input=${ this.handleFieldLaneCountChange}
+            id="field-lane-count"
+            value="${ this.gsFieldLaneCount }">
         </div>
       </form>
       <svg
@@ -381,105 +405,91 @@ class JPTimpistElement extends LitElement {
     `;
   }
 
-  renderField() {
+  * renderField() {
     const {
-      gsFieldLinePoints: points,
-      gsFieldLinePointPairs: pointPairs,
+      gsFieldLanePoints: points,
+      gsFieldLanePointPairs: pointPairs,
       gsShipIndex: shipIndex
     } = this;
 
     let [ flShip0, flShip1 ] = pointPairs.at(shipIndex);
+    let pair, point;
 
-    return svg`
-      <!-- Inside path -->
-      ${ repeat(
-        pointPairs,
-        pair => pair[0].angleF,
-        pair => svg`
-          <line
-            class="field"
-            x1="${ pair[0].xInnerF }"
-            y1="${ pair[0].yInnerF }"
-            x2="${ pair[1].xInnerF }"
-            y2="${ pair[1].yInnerF }"
-            stroke="currentColor"
-            stroke-width="0.5px">
-          </line>
-        `
-      ) }
+    for (pair of pointPairs) { ///////////////////////////////////// INSIDE PATH
+      yield svg`
+        <line
+          class="field"
+          x1="${ pair[0].xInnerF }"
+          y1="${ pair[0].yInnerF }"
+          x2="${ pair[1].xInnerF }"
+          y2="${ pair[1].yInnerF }"
+          stroke="currentColor"
+          stroke-width="0.5px">
+        </line>
+      `;
+    }
 
-      <!-- Inside-outside lines -->
-      ${ repeat(
-        points,
-        point => point.angleF,
-        point => svg`
-          <line
-            class="${ classMap({
-              field: true,
-              ship: point === flShip0 || point === flShip1
-            }) }"
-            x1="${ point.xInnerF }"
-            y1="${ point.yInnerF }"
-            x2="${ point.xOuterF }"
-            y2="${ point.yOuterF }"
-            stroke="currentColor"
-            stroke-width="0.5px">
-          </line>
-        `
-      ) }
+    for (point of points) { /////////////////////////////// INSIDE-OUTSIDE LINES
+      yield svg`
+        <line
+          class="${ classMap({
+            field: true,
+            ship: point === flShip0 || point === flShip1
+          }) }"
+          x1="${ point.xInnerF }"
+          y1="${ point.yInnerF }"
+          x2="${ point.xOuterF }"
+          y2="${ point.yOuterF }"
+          stroke="currentColor"
+          stroke-width="0.5px">
+        </line>
+      `;
+    }
 
-      <!-- Outside path -->
-      ${ repeat(
-        pointPairs,
-        pair => pair[0].angleF,
-        pair => svg`
-          <line
-            class="field"
-            x1="${ pair[0].xOuterF }"
-            y1="${ pair[0].yOuterF }"
-            x2="${ pair[1].xOuterF }"
-            y2="${ pair[1].yOuterF }"
-            stroke="currentColor"
-            stroke-width="0.5px">
-          </line>
-        `
-      ) }
-    `;
+    for (pair of pointPairs) { //////////////////////////////////// OUTSIDE PATH
+      yield svg`
+        <line
+          class="field"
+          x1="${ pair[0].xOuterF }"
+          y1="${ pair[0].yOuterF }"
+          x2="${ pair[1].xOuterF }"
+          y2="${ pair[1].yOuterF }"
+          stroke="currentColor"
+          stroke-width="0.5px">
+        </line>
+      `;
+    }
   }
 
-  renderLaserBlobs() {
+  * renderLaserBlobs() {
     let {
-      gsFieldLinePointPairs: pointPairs,
+      gsFieldLanePointPairs: pointPairs,
       rsNow: now
     } = this;
-    let laserBlobs = this.gsLaserBlobs;
+    let meta, tt
 
-    return repeat(
-      laserBlobs,
-      blob => blob.key,
-      blob => {
-        let { meta } = pointPairs.at(blob.index);
-        let tt = (now - blob.time) / LASER_BLOB_TRAVEL_TIME;
-        if (tt >= 1)
-          return '';
-        return svg`
-          <circle
-            class="laserblob"
-            cx="${ util.lerp(meta.xOuter, meta.xInner, tt) }"
-            cy="${ util.lerp(meta.yOuter, meta.yInner, tt) }"
-            r="${  util.lerp(2,           0.5,           tt) }"
-            fill="currentColor"
-            stroke="none">
-          </circle>
-        `;
-      }
-    )
+    for (let blob of this.gsLaserBlobs) {
+      ({ meta } = pointPairs.at(blob.index));
+      tt = (now - blob.time) / LASER_BLOB_TRAVEL_TIME;
+      if (tt >= 1)
+        continue;
+
+      yield svg`
+        <circle
+          class="laserblob"
+          cx="${ util.lerp(meta.xOuter, meta.xInner, tt) }"
+          cy="${ util.lerp(meta.yOuter, meta.yInner, tt) }"
+          r="${  util.lerp(2,           0.5,           tt) }"
+          fill="currentColor"
+          stroke="none">
+        </circle>
+      `;
+    }
   }
 
-  renderShip() {
+  * renderShip() {
     const {
-      gsFieldLinePoints: points,
-      gsFieldLinePointPairs: pointPairs,
+      gsFieldLanePointPairs: pointPairs,
       gsShip: ship,
       gsShipFloor: shipFloor,
       gsShipIndex: shipIndex
@@ -505,44 +515,48 @@ class JPTimpistElement extends LitElement {
 
     let shipAngleC = Math.cos(shipAngle);
     let shipAngleS = Math.sin(shipAngle);
-    let armLength = shipPair.meta.rOuter / 5;
+    let armLength = shipPair.meta.rOuter / 7;
+    let offset;
 
-    return svg`
-      <!-- Ship base -->
+    for (offset of SHIP_BASE_OFFSETS) {
+      yield svg`
+        <line
+          class="ship"
+          x1="${ shipPair[0].xOuterF }"
+          y1="${ shipPair[0].yOuterF }"
+          x2="${ shipX+shipAngleC*offset }"
+          y2="${ shipY-shipAngleS*offset }"
+          stroke="currentColor"
+          stroke-width="0.5px">
+        </line>
 
-      ${ repeat(
-        [ 1, -1 ],
-        offset => offset,
-        offset => svg`
-          <line
-            class="ship"
-            x1="${ shipPair[0].xOuterF }"
-            y1="${ shipPair[0].yOuterF }"
-            x2="${ shipX+shipAngleC*offset }"
-            y2="${ shipY-shipAngleS*offset }"
-            stroke="currentColor"
-            stroke-width="0.5px">
-          </line>
+        <line
+          class="ship"
+          x1="${ shipPair[1].xOuterF }"
+          y1="${ shipPair[1].yOuterF }"
+          x2="${ shipX-shipAngleC*offset }"
+          y2="${ shipY+shipAngleS*offset }"
+          stroke="currentColor"
+          stroke-width="0.5px">
+        </line>
+      `;
+    }
 
-          <line
-            class="ship"
-            x1="${ shipPair[1].xOuterF }"
-            y1="${ shipPair[1].yOuterF }"
-            x2="${ shipX-shipAngleC*offset }"
-            y2="${ shipY+shipAngleS*offset }"
-            stroke="currentColor"
-            stroke-width="0.5px">
-          </line>
-      `) }
-
+    return yield svg`
       <!-- Ship arms -->
 
       <line
         class="ship"
         x1="${ shipPair[1].xOuterF }"
         y1="${ shipPair[1].yOuterF }"
-        x2="${ shipPair[1].xOuter + armLength * Math.cos(shipPair[1].angle + 0.75*Math.PI) }"
-        y2="${ shipPair[1].yOuter - armLength * Math.sin(shipPair[1].angle + 0.75*Math.PI) }"
+        x2="${ (
+          shipPair[1].xOuter +
+          armLength * Math.cos(shipPair[1].angle + 0.75*Math.PI)
+        ).toFixed(2) }"
+        y2="${ (
+          shipPair[1].yOuter -
+          armLength * Math.sin(shipPair[1].angle + 0.65*Math.PI)
+        ).toFixed(2) }"
         stroke="currentColor"
         stroke-width="0.5px">
       </line>
@@ -551,14 +565,22 @@ class JPTimpistElement extends LitElement {
         class="ship"
         x1="${ shipPair[0].xOuterF }"
         y1="${ shipPair[0].yOuterF }"
-        x2="${ shipPair[0].xOuter + armLength * Math.cos(shipPair[0].angle + 0.25*Math.PI) }"
-        y2="${ shipPair[0].yOuter - armLength * Math.sin(shipPair[0].angle + 0.25*Math.PI) }"
+        x2="${ (
+          shipPair[0].xOuter +
+          armLength * Math.cos(shipPair[0].angle + 0.25*Math.PI)
+        ).toFixed(2) }"
+        y2="${ (
+          shipPair[0].yOuter -
+          armLength * Math.sin(shipPair[0].angle + 0.35*Math.PI)
+        ).toFixed(2) }"
         stroke="currentColor"
         stroke-width="0.5px">
       </line>
     `;
   }
 }
+
+const keyOnIndex = (_, index) => index;
 
 // It's just Object.assign under the hood. lit seems to pick up options directly
 // from the handler function's properties.
