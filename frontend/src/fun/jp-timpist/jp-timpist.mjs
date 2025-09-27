@@ -5,6 +5,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import * as field from './lib-field.mjs';
 import * as stage from './lib-stage.mjs';
 import * as util from './lib-util.mjs';
+import { Range } from './lib-range.mjs';
 
 const LSKEY_WHEEL_SCALE = 'jp-timpist-wheel-scale'
 
@@ -98,6 +99,10 @@ class JPTimpistElement extends LitElement {
     .note {
       line-height: 2.5;
       font-size: var(--jp-font-size-note);
+    }
+
+    svg .enemy.vine {
+      color: forestgreen;
     }
 
     svg .field:not(.ship) {
@@ -263,11 +268,10 @@ class JPTimpistElement extends LitElement {
 
   // API ///////////////////////////////////////////////////////////////////////
 
-  * generateEnemies({ enemyType, placement, quantity }) {
-    let getIndex = stage.PLACEMENT_FN[placement](this.gsFieldLaneCount, quantity);
-    let index;
+  * generateEnemies({ avoid, enemyType, placement, quantity }) {
+    let indexIterator = stage.PLACEMENT_FN[placement](this.gsFieldLaneCount, quantity, avoid)();
     for (let i = 0; i < quantity; i++) {
-      index = getIndex(i).value;
+      let index = indexIterator.next().value;
       yield {
         type: enemyType,
         index
@@ -414,11 +418,17 @@ class JPTimpistElement extends LitElement {
   }
 
   runActionSpawnEnemy(action) {
-    switch (action.enemyType) {
+    let { enemyType, quantity } = action;
+
+    switch (enemyType) {
       case stage.ENEMY.VINE:
+        action.avoid = Iterator.from(this.gsEnemyVines).map(enemy => enemy.index);
         this.gsEnemyVines = [
           ...this.gsEnemyVines,
-          ...this.generateEnemies(action)
+          ...this.generateEnemies(action).map(enemy => {
+            enemy.health = 1;
+            return enemy;
+          })
         ];
         break;
     }
@@ -489,6 +499,7 @@ class JPTimpistElement extends LitElement {
         viewBox="0 0 100 100">
         ${ this.renderField() }
         ${ this.renderLaserBlobs() }
+        ${ this.renderEnemyVines() }
         ${ this.renderShip() }
       </svg>
     `;
@@ -550,6 +561,29 @@ class JPTimpistElement extends LitElement {
     }
   }
 
+  * renderEnemyVines() {
+    let meta, vine;
+    let { gsFieldLanePointPairs: pointPairs } = this;
+
+    for (vine of this.gsEnemyVines) {
+      if (vine.health <= 0)
+        continue;
+
+      ({ meta } = pointPairs.at(vine.index));
+
+      yield svg`
+        <circle
+          class="enemy vine"
+          cx="${ meta.xInner }"
+          cy="${ meta.yInner }"
+          r="2"
+          fill="currentColor"
+          stroke="none">
+        </circle>
+      `;
+    }
+  }
+
   * renderLaserBlobs() {
     let {
       gsFieldLanePointPairs: pointPairs,
@@ -568,7 +602,7 @@ class JPTimpistElement extends LitElement {
           class="laserblob"
           cx="${ util.lerp(meta.xOuter, meta.xInner, tt) }"
           cy="${ util.lerp(meta.yOuter, meta.yInner, tt) }"
-          r="${  util.lerp(2,           0.5,           tt) }"
+          r="${  util.lerp(2,           0.5,         tt) }"
           fill="currentColor"
           stroke="none">
         </circle>

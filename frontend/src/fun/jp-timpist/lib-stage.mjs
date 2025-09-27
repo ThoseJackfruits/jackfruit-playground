@@ -1,3 +1,4 @@
+import { Range } from './lib-range.mjs';
 import * as util from './lib-util.mjs';
 
 export const ACTION = Object.freeze({
@@ -13,60 +14,64 @@ export const ENEMY = Object.freeze({
 
 export const PLACEMENT = Object.freeze({
   DISTRIBUTE: 'distribute',
-  RANDOM:     'random'
+  RANDOM:     'random',
 });
 
 export const PLACEMENT_FN = Object.freeze({
-  distribute(laneCount, totalCount) {
+  distribute(laneCount, totalCount, avoid) {
+    if (totalCount > laneCount)
+      throw new Error('Too many enemies for the stage');
     let filledLanes = Array.from({ length: laneCount }, () => null);
-    let filledCount = 0;
 
-    return function * distributePlacement(i) {
-      if (filledCount == laneCount)
-        for (let j = 0; j < filledLanes.length; j++)
-          filledLanes[j] = null; // reset
-
-      let start = Math.floor(Math.random() * filledLanes.length);
-      let direction = Math.random() > 0.5 ? 1 : -1;
-      let step = Math.ceil(1, Math.round(laneCount / (totalCount - filledCount)));
-
-      for (let j = 0; j += step*direction ; j < filledLanes.length) {
-        if (filledLanes[j] != null)
-        filledLanes[j] = i;
-        filledCount++;
-        yield j;
-      }
-
-      while (filledCount < totalCount) {
-        for (let j = 0; j < filledLanes.length; j++) {
-          if (filledLanes[j] == null) {
-            filledLanes[j] = i;
-            filledCount++;
-            yield j;
-          }
-        }
+    if (avoid) {
+      for (let index of avoid) {
+        filledLanes[index] = true;
       }
     }
+
+    return function * distributePlacement() {
+      let start = Math.floor(Math.random() * filledLanes.length);
+      let direction = Math.random() > 0.5 ? 1 : -1;
+      let step = Math.max(1, Math.round(laneCount / totalCount));
+
+      for (let index of new Range(0, totalCount))
+        if (!filledLanes[index])
+          yield (start + index*step*direction) % laneCount;
+    }
   },
-  random(laneCount, totalCount) {
+  random(laneCount, totalCount, avoid) {
+    if (totalCount > laneCount)
+      throw new Error('Too many enemies for the stage');
     let filledLanes = Array.from({ length: laneCount }, () => null);
     let filledCount = 0;
 
-    return function * randomPlacement(i) {
-      if (filledCount == laneCount) {
-        filledCount = 0;
-        for (let j = 0; j < filledLanes.length; j++) {
-          filledLanes[j] = null; // reset
-        }
+    if (avoid) {
+      for (let index of avoid) {
+        filledLanes[index] = true;
       }
+    }
 
-      let start = Math.floor(Math.random() * filledLanes.length);
-      let direction = Math.random() > 0.5 ? 1 : -1;
-      for (let j = start; j != start - direction; j = (j + direction) % laneCount) {
-        if (filledLanes[j] != null)
-        filledLanes[j] = i;
-        filledCount++;
-        yield j;
+    return function * randomPlacement() {
+      let start, direction, foundEmpty;
+
+      while (filledCount < totalCount) {
+        start = Math.floor(Math.random() * filledLanes.length);
+        direction = Math.random() > 0.5 ? 1 : -1;
+        foundEmpty = false;
+
+        // Start at a random point, and move in a random direction until an empty slot is found
+        for (let i = start; i != start - direction; i = (i + direction) % laneCount) {
+          if (filledLanes[i] != null)
+            continue;
+          filledLanes[i] = true;
+          filledCount++;
+          foundEmpty = true;
+          yield i;
+          break;
+        }
+
+        if (!foundEmpty)
+          break;
       }
     };
   }
@@ -79,7 +84,7 @@ export function * one() {
 
   yield {
     type: ACTION.WAIT,
-    duration: 3_000
+    duration: 500
   };
 
   yield {
