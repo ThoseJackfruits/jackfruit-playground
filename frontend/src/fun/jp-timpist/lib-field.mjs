@@ -35,7 +35,7 @@ const TAU = 2 * Math.PI;
  *   The offset of the first point, in units of full turns.
  * @returns {Iterable<FieldLane>}
  */
-export function * getFieldPoints(n, {
+export function * getPoints(n, {
   getRadius=(angle, i) => ({ outer: 40, inner: 5 }),
   offsetAngular=0.5
 }={}) {

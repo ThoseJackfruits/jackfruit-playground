@@ -30,6 +30,10 @@ export function * pairs(iterable) {
   }
 }
 
+export async function timePassage(ms) {
+  await new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export function * zip(iterables) {
   const iterators = iterables.map(iterable => iterable[Symbol.iterator]());
   while (true) {

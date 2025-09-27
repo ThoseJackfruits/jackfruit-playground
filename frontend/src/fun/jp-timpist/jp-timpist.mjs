@@ -2,7 +2,8 @@ import { LitElement, html, css, svg } from 'lit';
 import { eventOptions } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { getFieldPoints } from './lib-field.mjs';
+import * as field from './lib-field.mjs';
+import * as stage from './lib-stage.mjs';
 import * as util from './lib-util.mjs';
 
 const FIELD_TYPE_OPTIONS = Object.freeze([
@@ -28,7 +29,7 @@ const jpKeysPressed = Symbol('keysPressed');
 class JPTimpistElement extends LitElement {
   static properties = {
     data: { state: true },
-    gsEnemies: { state: true },
+    gsEnemyVines: { state: true },
     gsFieldLaneCount: { state: true },
     gsFieldType: { state: true },
     gsLaserBlobs: { state: true },
@@ -71,6 +72,17 @@ class JPTimpistElement extends LitElement {
       margin-top: var(--jp-common-padding);
     }
 
+    kbd {
+      all: unset;
+      box-shadow:
+        0 1px 1px rgba(0, 0, 0, 0.2),
+        0 2px 0 0 var(--jp-color-shadow) inset;
+      border-radius: var(--jp-common-border-radius);
+      border: 1px solid var(--jp-color-accent);
+      font-family: var(--jp-font-family-mono);
+      padding: 0.1em 0.2em;
+    }
+
     svg {
       max-width: 100%;
       max-height: 100%;
@@ -78,6 +90,11 @@ class JPTimpistElement extends LitElement {
       stroke-linecap: round;
       overflow: hidden;
       flex-shrink: 1;
+    }
+
+    .note {
+      line-height: 2.5;
+      font-size: var(--jp-font-size-note);
     }
 
     svg .field:not(.ship) {
@@ -116,6 +133,7 @@ class JPTimpistElement extends LitElement {
     let usp = new URLSearchParams(location.search);
     Object.assign(this, {
       gsLaserBlobs: [],
+      gsEnemyVines: [],
       gsFieldLaneCount: usp.get('preview-line-count') || 11,
       gsFieldType: usp.get('preview-type') || 'circle',
       gsShip: 0,
@@ -146,6 +164,7 @@ class JPTimpistElement extends LitElement {
 
   firstUpdated() {
     this.svgElement = this.shadowRoot.querySelector('svg');
+    this.runStage(stage.one);
   }
 
   // EVENT HANDLERS //////////////////////////////////////////////////////////
@@ -237,8 +256,20 @@ class JPTimpistElement extends LitElement {
 
   // API ///////////////////////////////////////////////////////////////////////
 
+  * generateEnemies({ enemyType, placement, quantity }) {
+    let getIndex = stage.PLACEMENT_FN[placement](this.gsFieldLaneCount, quantity);
+    let index;
+    for (let i = 0; i < quantity; i++) {
+      index = getIndex(i).value;
+      yield {
+        type: enemyType,
+        index
+      };
+    }
+  }
+
   getFieldLaneData() {
-    const [ ...gsFieldLanePoints ] = getFieldPoints(this.gsFieldLaneCount, {
+    const [ ...gsFieldLanePoints ] = field.getPoints(this.gsFieldLaneCount, {
       getRadius: this.getRadiusGetter(),
       offset: 0.5
     });
@@ -351,6 +382,46 @@ class JPTimpistElement extends LitElement {
     return requestAnimationFrame(loop);
   }
 
+  async runStage(stage) {
+    for await (let action of stage()) {
+      await this.runAction(action);
+    }
+  }
+
+  async runAction(action) {
+    console.debug('ACTION RUN', action.type);
+
+    switch (action.type) {
+      case stage.ACTION.SPAWN_ENEMY:
+        this.runActionSpawnEnemy(action);
+        break;
+      case stage.ACTION.STAGE_END:
+        this.runActionStageEnd(action);
+        break;
+      case stage.ACTION.WAIT:
+        await new Promise(resolve => setTimeout(resolve, action.duration));
+        break;
+      default:
+        console.warn('ACTION UNH', action.type);
+    }
+  }
+
+  runActionSpawnEnemy(action) {
+    switch (action.enemyType) {
+      case stage.ENEMY.VINE:
+        this.gsEnemyVines = [
+          ...this.gsEnemyVines,
+          ...this.generateEnemies(action)
+        ];
+        break;
+    }
+  }
+
+  runActionStageEnd(action) {
+    if (action.next)
+      this.runStage(action.next);
+  }
+
   shouldHandleKeyEvent(event) {
     return (
       event.target === this.svgElement ||
@@ -392,10 +463,16 @@ class JPTimpistElement extends LitElement {
             value="${ this.gsFieldLaneCount }">
         </div>
       </form>
+      <p id="instructions">
+        scroll and <kbd>&nbsp;&nbsp;&nbsp;space&nbsp;&nbsp;&nbsp;</kbd>
+        <br/>
+        <span class="note">(scroll devices with inertia work best)</span>
+      </p>
       <svg
         @keydown="${ this.handleKeyDown }"
         @keyup="${ this.handleKeyUp }"
         @wheel="${ this.handleWheel }"
+        aria-describedby="instructions"
         tabindex="0"
         viewBox="0 0 100 100">
         ${ this.renderField() }

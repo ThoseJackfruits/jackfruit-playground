@@ -32,11 +32,13 @@ class JPRistetElement extends LitElement {
         " grid   grid    " 1fr
         / auto   auto;
       padding: var(--jp-common-padding) var(--jp-common-padding);
+      box-sizing: border-box;
       border: var(--jp-common-border-width) solid var(--jp-color-accent);
       border-radius: var(--jp-common-border-radius);
       height: 100%;
       justify-content: center;
       overflow: hidden;
+      max-width: calc(100% - 1px);
     }
 
     :host(:fullscreen) #grid {
@@ -84,7 +86,7 @@ class JPRistetElement extends LitElement {
       all: unset;
       box-shadow:
         0 1px 1px rgba(0, 0, 0, 0.2),
-        0 2px 0 0 rgba(255, 255, 255, 0.7) inset;
+        0 2px 0 0 var(--jp-color-shadow) inset;
       border-radius: var(--jp-common-border-radius);
       border: 1px solid var(--jp-color-accent);
       font-family: var(--jp-font-family-mono);
@@ -99,6 +101,7 @@ class JPRistetElement extends LitElement {
       grid-template-rows: repeat(${ ROWS }, 1fr);
       max-width: 40vh; /* depends on aspect-ratio */
       max-height: 100%;
+      min-height: 100%;
       transition: filter 140ms ease-out;
       aspect-ratio: ${ COLUMNS } / ${ ROWS };
       align-items: start;
@@ -776,7 +779,7 @@ class JPRistetElement extends LitElement {
     }
   }
 
-  renderPreview() {
+  * renderPreview() {
     let { previewPiece } =
       this.gameData.endData ?? this.gameData.resumeData ?? this.gameData;
 
@@ -784,23 +787,17 @@ class JPRistetElement extends LitElement {
       return '';
     }
 
-    return html`
-      ${ repeat(
-        previewPiece.shape,
-        (_, i) => i,
-        (row, y) => this.renderPreviewRow(previewPiece, row, y)
-      ) }
-    `;
+    for (let y = 0; y < previewPiece.shape.length; y++) {
+      const row = previewPiece.shape[y];
+      yield * this.renderPreviewRow(previewPiece, row, y);
+    }
   }
 
-  renderPreviewRow(previewPiece, row, y) {
-    return html`
-      ${ repeat(
-        padArrayStart(row, 0, 4),
-        (_, x) => x,
-        (cell, x) => this.renderPreviewCell(previewPiece, cell, x, y)
-      ) }
-    `;
+  * renderPreviewRow(previewPiece, row, y) {
+    for (let x = 0; x < row.length; x++) {
+      const cell = row[x];
+      yield this.renderPreviewCell(previewPiece, cell, x, y);
+    }
   }
 
   renderPreviewCell(previewPiece, cell, x, y) {

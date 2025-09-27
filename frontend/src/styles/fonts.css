@@ -6,7 +6,8 @@
   --jp-font-face-header: 'Oi', cursive;
   --jp-font-optical-sizing-display: auto;
 
-  --jp-font-size-display: 1.5rem;
+  --jp-font-size-note: 0.8rem;
+  --jp-font-size-display: 1rem;
   --jp-font-size-nav: 2rem;
   --jp-font-size-h1: 3rem;
   --jp-font-size-h2: 2.5rem;
