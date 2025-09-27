@@ -6,6 +6,8 @@ import * as field from './lib-field.mjs';
 import * as stage from './lib-stage.mjs';
 import * as util from './lib-util.mjs';
 
+const LSKEY_WHEEL_SCALE = 'jp-timpist-wheel-scale'
+
 const FIELD_TYPE_OPTIONS = Object.freeze([
   { label: 'Circle', value: 'circle' },
   { label: 'Ellipse', value: 'ellipse' },
@@ -37,7 +39,8 @@ class JPTimpistElement extends LitElement {
     gsShipFloor: { state: true },
     gsShipIndex: { state: true },
     state: { type: String, reflect: true },
-    updateToggle: { state: true }
+    updateToggle: { state: true },
+    wheelScale: { state: true }
   };
 
   static styles = css`
@@ -138,7 +141,8 @@ class JPTimpistElement extends LitElement {
       gsFieldType: usp.get('preview-type') || 'circle',
       gsShip: 0,
       gsShipFloor: 0,
-      gsShipIndex: 0
+      gsShipIndex: 0,
+      wheelScale: localStorage.getItem(LSKEY_WHEEL_SCALE) || 120
     });
     Object.assign(this, this.getFieldLaneData());
   }
@@ -195,6 +199,12 @@ class JPTimpistElement extends LitElement {
     history.replaceState({}, '', `?${ usp.toString() }`);
   }
 
+  handleWheelScaleChange(event) {
+    let scale = +event.target.value;
+    localStorage.setItem(LSKEY_WHEEL_SCALE, scale);
+    this.wheelScale = scale;
+  }
+
   handleKeyDown = event => {
     if (!this.shouldHandleKeyEvent(event))
       return;
@@ -236,14 +246,11 @@ class JPTimpistElement extends LitElement {
 
   handleWheel(event) {
     let dist = event.deltaY;
-    switch (event.deltaMode) {
-      case WheelEvent.DOM_DELTA_PIXEL:
-        dist /= 120;
-      case WheelEvent.DOM_DELTA_LINE:
-        break;
-      case WheelEvent.DOM_DELTA_PAGE:
-        dist *= 100;
-        break;
+
+    if (this.wheelScale > 0) {
+      dist *= this.wheelScale;
+    } else {
+      dist /= -this.wheelScale;
     }
 
     this.gsShip += dist;
@@ -462,7 +469,12 @@ class JPTimpistElement extends LitElement {
             id="field-lane-count"
             value="${ this.gsFieldLaneCount }">
         </div>
+        <div class="field">
+          <label for="wheel-scale">Scroll scale</label>
+          <input type="range" min="-200" max="200" value="${ this.wheelScale }" @change=${ this.handleWheelScaleChange } id="wheel-scale">
+        </div>
       </form>
+
       <p id="instructions">
         scroll and <kbd>&nbsp;&nbsp;&nbsp;space&nbsp;&nbsp;&nbsp;</kbd>
         <br/>
