@@ -18,6 +18,7 @@ const FIELD_TYPE_OPTIONS = Object.freeze([
   { label: 'Star', value: 'star' },
 ]);
 
+const ENEMY_VINE_GROW_TIME = 2_000;
 const LASER_BLOB_TRAVEL_TIME = 800;
 
 const SHIP_BASE_OFFSETS = Object.freeze([ 1, -1 ]);
@@ -101,8 +102,12 @@ class JPTimpistElement extends LitElement {
       font-size: var(--jp-font-size-note);
     }
 
-    svg .enemy.vine {
+    svg circle.enemy.vine {
       color: forestgreen;
+    }
+
+    svg line.enemy.vine {
+      color: lawngreen;
     }
 
     svg .field:not(.ship) {
@@ -418,7 +423,8 @@ class JPTimpistElement extends LitElement {
   }
 
   runActionSpawnEnemy(action) {
-    let { enemyType, quantity } = action;
+    let { enemyType } = action;
+    let now = Date.now();
 
     switch (enemyType) {
       case stage.ENEMY.VINE:
@@ -427,6 +433,8 @@ class JPTimpistElement extends LitElement {
           ...this.gsEnemyVines,
           ...this.generateEnemies(action).map(enemy => {
             enemy.health = 1;
+            enemy.time = now;
+            enemy.growTime = ENEMY_VINE_GROW_TIME * (Math.random() * 0.5 + 0.75); // 0.75 to 1.25
             return enemy;
           })
         ];
@@ -562,20 +570,33 @@ class JPTimpistElement extends LitElement {
   }
 
   * renderEnemyVines() {
-    let meta, vine;
+    let meta, vine, tt, now;
     let { gsFieldLanePointPairs: pointPairs } = this;
+
+    now = Date.now();
 
     for (vine of this.gsEnemyVines) {
       if (vine.health <= 0)
         continue;
 
+      // TODO this should be a lose-a-life scenario if it's >=1
+      tt = Math.min(1, (now - vine.time) / vine.growTime);
       ({ meta } = pointPairs.at(vine.index));
 
       yield svg`
+        <line
+          class="enemy vine"
+          x1="${ util.lerp(meta.xInner, meta.xOuter, tt) }"
+          y1="${ util.lerp(meta.yInner, meta.yOuter, tt) }"
+          x2="${ meta.xInner }"
+          y2="${ meta.yInner }"
+          fill="none"
+          stroke="currentColor">
+        </line>
         <circle
           class="enemy vine"
-          cx="${ meta.xInner }"
-          cy="${ meta.yInner }"
+          cx="${ util.lerp(meta.xInner, meta.xOuter, tt) }"
+          cy="${ util.lerp(meta.yInner, meta.yOuter, tt) }"
           r="2"
           fill="currentColor"
           stroke="none">
@@ -589,7 +610,7 @@ class JPTimpistElement extends LitElement {
       gsFieldLanePointPairs: pointPairs,
       rsNow: now
     } = this;
-    let meta, tt
+    let meta, tt;
 
     for (let blob of this.gsLaserBlobs) {
       ({ meta } = pointPairs.at(blob.index));
