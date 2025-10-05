@@ -28,8 +28,8 @@ class JPRistetElement extends LitElement {
       display: grid;
       gap: calc(var(--jp-common-padding) / 2);
       grid-template:
-        " header preview " auto
-        " grid   grid    " 1fr
+        " header preview  " auto
+        " grid   store    " 1fr
         / auto   auto;
       padding: var(--jp-common-padding) var(--jp-common-padding);
       box-sizing: border-box;
@@ -52,7 +52,8 @@ class JPRistetElement extends LitElement {
     }
 
     #overlay {
-      grid-area: grid;
+      grid-row: 1 / -1;
+      grid-column: 1 / -1;
       font-size: 1.5em;
       color: var(--jp-color-text);
       display: flex;
@@ -108,7 +109,7 @@ class JPRistetElement extends LitElement {
       justify-items: start;
     }
 
-    #preview {
+    #preview, #store {
       grid-area: preview;
       display: grid;
       gap: 2px;
@@ -119,6 +120,11 @@ class JPRistetElement extends LitElement {
       align-items: start;
       justify-items: start;
       height: var(--jp-font-size-h2);
+    }
+
+    #store {
+      grid-area: store;
+      border: 2px solid white;
     }
 
     .grid-cell {
@@ -154,6 +160,10 @@ class JPRistetElement extends LitElement {
       background-color: #8B8;
     }
 
+    .grid-cell.on.T {
+      background-color: #000000;
+    }
+
     .grid-cell.on.Z {
       background-color: #88B;
     }
@@ -163,7 +173,7 @@ class JPRistetElement extends LitElement {
     }
 
     .grid-cell.path {
-      background-color: #9996;
+      background-color: var(--jp-color-bg-5);
     }
 
     .grid-cell.c1 {
@@ -218,6 +228,10 @@ class JPRistetElement extends LitElement {
 
       .grid-cell.on.S {
         background-color: #BFB;
+      }
+
+      .grid-cell.on.T {
+        background-color: #ffffff;
       }
 
       .grid-cell.on.Z {
@@ -527,24 +541,26 @@ class JPRistetElement extends LitElement {
   }
 
   swapSimulate(gameData=this.gameData) {
-    let { currentPiece, previewPiece, swapped } = gameData;
+    let { currentPiece, previewPiece, swapped, storedPiece } = gameData;
 
     if (swapped)
       return SwapError.ALREADY_SWAPPED;
 
     return merge(gameData, {
       currentPiece: null,
+      storedPiece: null,
       previewPiece: null,
     }, {
       currentPiece: {
-        ...previewPiece,
+        ...storedPiece ?? previewPiece,
         pos: {
           // center horizontally
           x: Math.floor((COLUMNS - pieceWidth(previewPiece)) / 2),
           y: 0,
         },
       },
-      previewPiece: currentPiece,
+      storedPiece: currentPiece,
+      previewPiece: storedPiece ? previewPiece : this.previewStream.next().value,
       swapped: true,
     });
   }
@@ -704,6 +720,7 @@ class JPRistetElement extends LitElement {
         ${ this.renderGrid() }
         ${ this.renderClearedLines() }
       </div>
+      <div id="store">${ this.renderStored() }</div>
       <div id="overlay">
         ${ this.renderOverlay() }
       </div>
@@ -790,6 +807,20 @@ class JPRistetElement extends LitElement {
     for (let y = 0; y < previewPiece.shape.length; y++) {
       const row = previewPiece.shape[y];
       yield * this.renderPreviewRow(previewPiece, row, y);
+    }
+  }
+
+  * renderStored() {
+    let { storedPiece } =
+      this.gameData.endData ?? this.gameData.resumeData ?? this.gameData;
+
+    if (!storedPiece) {
+      return '';
+    }
+
+    for (let y = 0; y < storedPiece.shape.length; y++) {
+      const row = storedPiece.shape[y];
+      yield * this.renderPreviewRow(storedPiece, row, y);
     }
   }
 
