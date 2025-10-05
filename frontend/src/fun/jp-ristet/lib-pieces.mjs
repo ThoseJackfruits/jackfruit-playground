@@ -29,6 +29,12 @@ export const PIECES = deepFreeze({
       [ 1, 1, 0 ]
     ],
   },
+  T: {
+    shape: [
+      [ 0, 1, 0 ],
+      [ 1, 1, 1 ],
+    ]
+  },
   Z: {
     shape: [
       [ 1, 1, 0 ],
