@@ -4,7 +4,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import merge from 'lodash-es/merge';
 
 import { STATES, STATE_TRANSITIONS, DIRECTION, ROTATION } from './lib-enum.mjs';
-import { getPieceStreamWeighted, pieceHeight, pieceWidth, rotateShape } from './lib-pieces.mjs';
+import { getPieceStreamWeighted, pieceHeight, pieceWidth, rotateShape, PIECES } from './lib-pieces.mjs';
 
 const COLUMNS = 8;
 const ROWS = 16;
@@ -28,8 +28,8 @@ class JPRistetElement extends LitElement {
       display: grid;
       gap: calc(var(--jp-common-padding) / 2);
       grid-template:
-        " header preview  " auto
-        " grid   store    " 1fr
+        " header data " auto
+        " grid   data " 1fr
         / auto   auto;
       padding: var(--jp-common-padding) var(--jp-common-padding);
       box-sizing: border-box;
@@ -109,22 +109,31 @@ class JPRistetElement extends LitElement {
       justify-items: start;
     }
 
-    #preview, #store {
-      grid-area: preview;
+    /* Class for styling a mini display of a piece */
+    .micro-display {
+      border: 2px solid white;
       display: grid;
       gap: 2px;
       grid-template-columns: repeat(4, 1fr);
       grid-template-rows:    repeat(3, 1fr);
-      justify-self: end;
-      aspect-ratio: 4 / 3;
-      align-items: start;
-      justify-items: start;
       height: var(--jp-font-size-h2);
+      aspect-ratio: 4 / 3;
     }
 
-    #store {
-      grid-area: store;
-      border: 2px solid white;
+    /* This represents the entire right-side column of "data" presented to the player */
+    #data {
+      grid-area: data;
+      display: grid;
+      grid-template-rows: repeat(4, auto) 1fr;
+      gap: 5px;
+    }
+
+    /* Assumes that all the items under #data will be divs */
+    #data div {
+      display: flex;
+      gap: 5px;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .grid-cell {
@@ -559,7 +568,11 @@ class JPRistetElement extends LitElement {
           y: 0,
         },
       },
-      storedPiece: currentPiece,
+      // Set storedPiece such that the current piece is reset to its original orientation
+      storedPiece: {
+        ...currentPiece,
+        shape: PIECES[currentPiece.name]?.shape
+      },
       previewPiece: storedPiece ? previewPiece : this.previewStream.next().value,
       swapped: true,
     });
@@ -713,14 +726,22 @@ class JPRistetElement extends LitElement {
   render() {
     return html`
       <h2>Ristet</h2>
-      <div id="preview">
-        ${ this.renderPreview() }
-      </div>
       <div id="grid">
         ${ this.renderGrid() }
         ${ this.renderClearedLines() }
       </div>
-      <div id="store">${ this.renderStored() }</div>
+      <div id="data">
+        <div>
+          <span>Next:</span>
+          <span class="micro-display">${ this.renderPreview() }</span>
+        </div>
+        <div>
+          <span>Stored:</span>
+          <span class="micro-display">${ this.renderStored() }</span>
+        </div>
+        <div>${ this.renderScore() }</div>
+        <div>${ this.renderMultiplier() }</div>
+      </div>
       <div id="overlay">
         ${ this.renderOverlay() }
       </div>
@@ -822,6 +843,24 @@ class JPRistetElement extends LitElement {
       const row = storedPiece.shape[y];
       yield * this.renderPreviewRow(storedPiece, row, y);
     }
+  }
+
+  * renderScore() {
+    let { score } = 
+      this.gameData.endData ?? this.gameData.resumeData ?? this.gameData;
+
+    yield html`
+      <span>Score: ${ score ?? 0 }</span>
+    `;
+  }
+
+  * renderMultiplier() {
+    let { multiplier } = 
+      this.gameData.endData ?? this.gameData.resumeData ?? this.gameData;
+
+    yield html`
+      <span>Multiplier: ${ multiplier ?? 1.0 }</span>
+    `;
   }
 
   * renderPreviewRow(previewPiece, row, y) {
