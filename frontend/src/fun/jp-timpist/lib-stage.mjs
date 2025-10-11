@@ -1,5 +1,4 @@
-import { Range } from './lib-range.mjs';
-import * as util from './lib-util.mjs';
+import { Range } from './util/range.mjs';
 
 export const ACTION = Object.freeze({
   SPAWN_ENEMY: 'spawn-enemy',

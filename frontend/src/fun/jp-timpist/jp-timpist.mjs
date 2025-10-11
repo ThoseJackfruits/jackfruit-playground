@@ -5,7 +5,6 @@ import { repeat } from 'lit/directives/repeat.js';
 import * as field from './lib-field.mjs';
 import * as stage from './lib-stage.mjs';
 import * as util from './lib-util.mjs';
-import { Range } from './lib-range.mjs';
 
 const LSKEY_WHEEL_SCALE = 'jp-timpist-wheel-scale'
 
@@ -142,7 +141,7 @@ class JPTimpistElement extends LitElement {
 
   constructor() {
     super();
-    this.state = STATE.PREVIEW
+    this.state = STATE.PREVIEW;
     let usp = new URLSearchParams(location.search);
     Object.assign(this, {
       gsLaserBlobs: [],
@@ -159,7 +158,6 @@ class JPTimpistElement extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    let updated;
     this.rafIndex = this.raffertyDownToBakerStreet();
 
     document.addEventListener('keydown', this.handleKeyDown);
@@ -231,19 +229,19 @@ class JPTimpistElement extends LitElement {
       return;
     this[jpKeysPressed].add(event.key);
     let index = this.gsShipIndex;
-    let time = Date.now();
-    let key = `${ index }-${ time }`
+    let now = Date.now();
+    let key = `${ index }-${ now }`
     this.gsLaserBlobs.push({
       key,
       index,
-      time
+      time: now
     });
 
-    let gcTime = time - LASER_BLOB_TRAVEL_TIME * 2;
+    let gcTime = now - LASER_BLOB_TRAVEL_TIME * 2;
 
     if (this.gsLaserBlobs[0]?.time < gcTime)  // NaN abuse alert
       this.gsLaserBlobs = this.gsLaserBlobs
-        .filter(blob => blob.time > gcTime);
+        .filter(blob => blob.time >= now - LASER_BLOB_TRAVEL_TIME);
 
     this.updateToggle = !this.updateToggle;
   }
@@ -272,6 +270,32 @@ class JPTimpistElement extends LitElement {
   }
 
   // API ///////////////////////////////////////////////////////////////////////
+
+  checkCollisionBulletVine = (() => {
+    let lbR, lbTT, lbX, lbY,  // laserBlob values
+      eR=2, eX, eY, eTT,      // enemy values
+      dist, meta;
+
+    return (laserBlob, vine) => {
+      if (vine.index && (laserBlob.index !== vine.index))
+        return false;
+      eTT = Math.min(1, (this.rsNow - vine.time) / vine.growTime);
+      lbTT = (this.rsNow - laserBlob.time) / LASER_BLOB_TRAVEL_TIME;
+
+      if (eTT >= 1 || lbTT >= 1)
+        return false;
+
+      ({ meta } = this.gsFieldLanePointPairs.at(vine.index));
+      eX  = util.lerp(meta.xInner, meta.xOuter,  eTT);
+      eY  = util.lerp(meta.yInner, meta.yOuter,  eTT);
+      lbX = util.lerp(meta.xOuter, meta.xInner, lbTT);
+      lbY = util.lerp(meta.yOuter, meta.yInner, lbTT);
+      lbR = util.lerp(2,           0.5,         lbTT);
+
+      dist = Math.sqrt((eX-lbX)**2 + (eY-lbY)**2);
+      return dist <= lbR + eR;
+    }
+  })();
 
   * generateEnemies({ avoid, enemyType, placement, quantity }) {
     let indexIterator = stage.PLACEMENT_FN[placement](this.gsFieldLaneCount, quantity, avoid)();
@@ -382,15 +406,25 @@ class JPTimpistElement extends LitElement {
 
   getShipData() {
     let gsShipFloor = Math.floor(this.gsShip);
+    let gsShipIndex = gsShipFloor % this.gsFieldLanePointPairs.length;
+    if (gsShipIndex < 0)
+      gsShipIndex += this.gsFieldLanePointPairs.length;
     return {
       gsShipFloor,
-      gsShipIndex: gsShipFloor % this.gsFieldLanePointPairs.length
+      gsShipIndex
     };
   }
 
   raffertyDownToBakerStreet() {
-    let updated;
+    let vine, laserBlob;
     let loop = () => {
+      for (laserBlob of this.gsLaserBlobs)
+        for (vine of this.gsEnemyVines)
+          if (this.checkCollisionBulletVine(laserBlob, vine)) {
+            laserBlob.time = 0;
+            vine.damagedAt ??= this.rsNow;
+          }
+
       this.updateToggle = !this.updateToggle;
       requestAnimationFrame(loop);
     };
@@ -580,7 +614,7 @@ class JPTimpistElement extends LitElement {
         continue;
 
       // TODO this should be a lose-a-life scenario if it's >=1
-      tt = Math.min(1, (now - vine.time) / vine.growTime);
+      tt = Math.min(1, ((vine.damagedAt ?? now) - vine.time) / vine.growTime);
       ({ meta } = pointPairs.at(vine.index));
 
       yield svg`
@@ -723,8 +757,6 @@ class JPTimpistElement extends LitElement {
     `;
   }
 }
-
-const keyOnIndex = (_, index) => index;
 
 // It's just Object.assign under the hood. lit seems to pick up options directly
 // from the handler function's properties.
