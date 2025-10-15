@@ -29,13 +29,19 @@ export const PLACEMENT_FN = Object.freeze({
     }
 
     return function * distributePlacement() {
+      let index, result;
       let start = Math.floor(Math.random() * filledLanes.length);
       let direction = Math.random() > 0.5 ? 1 : -1;
       let step = Math.max(1, Math.round(laneCount / totalCount));
 
-      for (let index of new Range(0, totalCount))
-        if (!filledLanes[index])
-          yield (start + index*step*direction) % laneCount;
+      for (index of new Range(0, totalCount))
+        if (!filledLanes[index]) {
+          result = (start + index*step*direction) % laneCount;
+          if (result < 0)
+            yield result + laneCount;
+          else
+            yield result;
+        }
     }
   },
   random(laneCount, totalCount, avoid) {
@@ -65,7 +71,10 @@ export const PLACEMENT_FN = Object.freeze({
           filledLanes[i] = true;
           filledCount++;
           foundEmpty = true;
-          yield i;
+          if (i < 0)
+            yield i + laneCount;
+          else
+            yield i;
           break;
         }
 

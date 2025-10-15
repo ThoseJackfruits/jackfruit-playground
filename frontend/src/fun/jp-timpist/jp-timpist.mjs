@@ -17,7 +17,7 @@ const FIELD_TYPE_OPTIONS = Object.freeze([
   { label: 'Star', value: 'star' },
 ]);
 
-const ENEMY_VINE_CHUNKS      =     8;
+const ENEMY_VINE_CHUNKS      =     5;
 const ENEMY_VINE_GROW_TIME   = 2_000;
 const LASER_BLOB_TRAVEL_TIME =   800;
 
@@ -314,16 +314,18 @@ class JPTimpistElement extends LitElement {
               vine.damagedAt -= vineLoss;
             else
               vine.damagedAt = this.rsNow;
-            if ((vine.damagedAt - vineLoss) <= vine.time)
-              this.gsEnemyVines.delete(vine);
+            if ((vine.damagedAt - vineLoss/2) <= vine.time)
+              this.gsEnemyVines.delete(vine); // remove if just a stub left
           }
     };
   })();
 
   * generateEnemies({ avoid, enemyType, placement, quantity }) {
-    let indexIterator = stage.PLACEMENT_FN[placement](this.gsFieldLaneCount, quantity, avoid)();
+    let index;
+    let indexIterator =
+      stage.PLACEMENT_FN[placement](this.gsFieldLaneCount, quantity, avoid)();
     for (let i = 0; i < quantity; i++) {
-      let index = indexIterator.next().value;
+      index = indexIterator.next().value;
       yield {
         type: enemyType,
         index
@@ -338,21 +340,25 @@ class JPTimpistElement extends LitElement {
     });
     const [ ...gsFieldLanePointPairs ] = util.pairs(gsFieldLanePoints);
 
-    for (let pair of gsFieldLanePointPairs) {
-      let [ fl0, fl1 ] = pair;
-      let
-        rOuterF = util.avg2(fl0.rOuter, fl1.rOuter).toFixed(2),
-        rOuter  = +rOuterF,
-        xOuterF = util.avg2(fl0.xOuter, fl1.xOuter).toFixed(2),
-        xOuter  = +xOuterF,
-        yOuterF = util.avg2(fl0.yOuter, fl1.yOuter).toFixed(2),
-        yOuter  = +yOuterF,
-        rInnerF = util.avg2(fl0.rInner, fl1.rInner).toFixed(2),
-        rInner  = +rInnerF,
-        xInnerF = util.avg2(fl0.xInner, fl1.xInner).toFixed(2),
-        xInner = +xInnerF,
-        yInnerF = util.avg2(fl0.yInner, fl1.yInner).toFixed(2),
-        yInner = +yInnerF;
+    let pair, fl0, fl1,
+        rOuterF, rOuter, rInnerF, rInner,
+        xOuterF, xOuter, yOuterF, yOuter,
+        xInnerF, xInner, yInnerF, yInner;
+
+    for (pair of gsFieldLanePointPairs) {
+      [ fl0, fl1 ] = pair;
+      rOuterF = util.avg2(fl0.rOuter, fl1.rOuter).toFixed(2),
+      rOuter  = +rOuterF,
+      xOuterF = util.avg2(fl0.xOuter, fl1.xOuter).toFixed(2),
+      xOuter  = +xOuterF,
+      yOuterF = util.avg2(fl0.yOuter, fl1.yOuter).toFixed(2),
+      yOuter  = +yOuterF,
+      rInnerF = util.avg2(fl0.rInner, fl1.rInner).toFixed(2),
+      rInner  = +rInnerF,
+      xInnerF = util.avg2(fl0.xInner, fl1.xInner).toFixed(2),
+      xInner = +xInnerF,
+      yInnerF = util.avg2(fl0.yInner, fl1.yInner).toFixed(2),
+      yInner = +yInnerF;
 
       pair.meta = {
         rInner,
@@ -381,48 +387,47 @@ class JPTimpistElement extends LitElement {
       case 'circle':
         return (angle, i) => ({ outer: 40, inner: 5, innerOffsetY: 10 });
       case 'ellipse':
+      let outer;
         return (angle, i) => {
-          let outer = 30 + 15 * (1 - Math.abs(Math.cos(angle)));
-          let inner = Math.sqrt(outer) * 2;
-          return { outer, inner };
+          outer = 30 + 15 * (1 - Math.abs(Math.cos(angle)));
+          return {
+            outer,
+            inner: Math.sqrt(outer) * 2
+          };
         };
       case 'peanut':
-        return (angle, i) => {
-          let outer =
-            30 +
-            15 * Math.abs(Math.sin(angle)) ** 1.2 -
-            15 * Math.abs(Math.cos(angle)) ** 1.8;
-          let inner = 5;
-          return { outer, inner, innerOffsetY: 3 };
-        };
+        return (angle, i) => ({
+            outer:
+              30 +
+              15 * Math.abs(Math.sin(angle)) ** 1.2 -
+              15 * Math.abs(Math.cos(angle)) ** 1.8,
+            inner: 5,
+            innerOffsetY: 3
+        });
       case 'star':
-        return (angle, i) => {
-          let outer = 40;
-          let inner = 5;
-          if (i % 2 === 0) {
-            outer = 20;
-            inner = 3.5;
-          }
-          return { outer, inner, innerOffsetY: 3 };
-        };
+        return (angle, i) => ({
+          outer: i % 2 === 0 ? 20 : 40,
+          inner: i % 2 === 0 ? 3.5 : 5,
+          innerOffsetY: 3
+        });
       case 'square-rounded':
-        return (angle, i) => {
-          let outer = 40;
-          let inner = 5;
-
-          outer *= Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle));
-
-          return { outer, inner, innerOffsetY: 20 };
-        };
+        return (angle, i) => ({
+          outer: 40 * (Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle))),
+          inner: 5,
+          innerOffsetY: 20
+        });
       case 'square-sharp':
+        let maxComponent;
         return (angle, i) => {
-          let maxComponent = Math.max(
+          maxComponent = Math.max(
             Math.abs(Math.cos(angle)),
             Math.abs(Math.sin(angle)));
-          let outer = maxComponent > 0 ? 40 / maxComponent : 40;
-          let inner = 5;
 
-          return { outer, inner, innerOffsetY: 20 };
+          return {
+            outer: maxComponent > 0 ? 40 / maxComponent : 40,
+            inner: 5,
+            innerOffsetY: 20
+          };
         };
     }
   }
@@ -483,6 +488,7 @@ class JPTimpistElement extends LitElement {
           vine.time = now;
           // 75–125% of base grow time
           vine.growTime = ENEMY_VINE_GROW_TIME * (Math.random() * 0.5 + 0.75);
+          console.log('--vi--', vine.index);
           this.gsEnemyVines.add(vine);
         }
         break;
@@ -560,218 +566,231 @@ class JPTimpistElement extends LitElement {
     `;
   }
 
-  * renderField() {
-    const {
-      gsFieldLanePoints: points,
-      gsFieldLanePointPairs: pointPairs,
-      gsShipIndex: shipIndex
-    } = this;
+  renderField = (() => {
+    let points, pointPairs, shipIndex,
+        flShip0, flShip1, pair, point;
 
-    let [ flShip0, flShip1 ] = pointPairs.at(shipIndex);
-    let pair, point;
+    return function * () {
+      ({
+        gsFieldLanePoints: points,
+        gsFieldLanePointPairs: pointPairs,
+        gsShipIndex: shipIndex
+      } = this);
 
-    for (pair of pointPairs) { ///////////////////////////////////// INSIDE PATH
-      yield svg`
-        <line
-          class="field"
-          x1="${ pair[0].xInnerF }"
-          y1="${ pair[0].yInnerF }"
-          x2="${ pair[1].xInnerF }"
-          y2="${ pair[1].yInnerF }"
-          stroke="currentColor"
-          stroke-width="0.5px">
-        </line>
-      `;
+      [ flShip0, flShip1 ] = pointPairs.at(shipIndex);
+
+      for (pair of pointPairs) { ///////////////////////////////////// INSIDE PATH
+        yield svg`
+          <line
+            class="field"
+            x1="${ pair[0].xInnerF }"
+            y1="${ pair[0].yInnerF }"
+            x2="${ pair[1].xInnerF }"
+            y2="${ pair[1].yInnerF }"
+            stroke="currentColor"
+            stroke-width="0.5px">
+          </line>
+        `;
+      }
+
+      for (point of points) { /////////////////////////////// INSIDE-OUTSIDE LINES
+        yield svg`
+          <line
+            class="${ classMap({
+              field: true,
+              ship: point === flShip0 || point === flShip1
+            }) }"
+            x1="${ point.xInnerF }"
+            y1="${ point.yInnerF }"
+            x2="${ point.xOuterF }"
+            y2="${ point.yOuterF }"
+            stroke="currentColor"
+            stroke-width="0.5px">
+          </line>
+        `;
+      }
+
+      for (pair of pointPairs) { //////////////////////////////////// OUTSIDE PATH
+        yield svg`
+          <line
+            class="field"
+            x1="${ pair[0].xOuterF }"
+            y1="${ pair[0].yOuterF }"
+            x2="${ pair[1].xOuterF }"
+            y2="${ pair[1].yOuterF }"
+            stroke="currentColor"
+            stroke-width="0.5px">
+          </line>
+        `;
+      }
     }
+  })();
 
-    for (point of points) { /////////////////////////////// INSIDE-OUTSIDE LINES
-      yield svg`
-        <line
-          class="${ classMap({
-            field: true,
-            ship: point === flShip0 || point === flShip1
-          }) }"
-          x1="${ point.xInnerF }"
-          y1="${ point.yInnerF }"
-          x2="${ point.xOuterF }"
-          y2="${ point.yOuterF }"
-          stroke="currentColor"
-          stroke-width="0.5px">
-        </line>
-      `;
+  renderEnemyVines = (() => {
+    let meta, vine, tt, now, pointPairs;
+
+    return function * () {
+      ({ gsFieldLanePointPairs: pointPairs } = this);
+
+      now = Date.now();
+
+      for (vine of this.gsEnemyVines) {
+        if (vine.growTime <= 0)
+          continue;
+
+        // TODO this should be a lose-a-life scenario if it's >=1
+        tt = Math.min(1, ((vine.damagedAt ?? now) - vine.time) / vine.growTime);
+        ({ meta } = pointPairs.at(vine.index));
+
+        yield svg`
+          <line
+            class="enemy vine"
+            x1="${ util.lerp(meta.xInner, meta.xOuter, tt) }"
+            y1="${ util.lerp(meta.yInner, meta.yOuter, tt) }"
+            x2="${ meta.xInner }"
+            y2="${ meta.yInner }"
+            fill="none"
+            stroke="currentColor">
+          </line>
+        `;
+
+        if (!vine.damagedAt)
+          yield svg`<circle
+            class="enemy vine"
+            cx="${ util.lerp(meta.xInner, meta.xOuter, tt) }"
+            cy="${ util.lerp(meta.yInner, meta.yOuter, tt) }"
+            r="2"
+            fill="currentColor"
+            stroke="none">
+          </circle>
+        `;
+      }
     }
+  })();
 
-    for (pair of pointPairs) { //////////////////////////////////// OUTSIDE PATH
-      yield svg`
-        <line
-          class="field"
-          x1="${ pair[0].xOuterF }"
-          y1="${ pair[0].yOuterF }"
-          x2="${ pair[1].xOuterF }"
-          y2="${ pair[1].yOuterF }"
-          stroke="currentColor"
-          stroke-width="0.5px">
-        </line>
-      `;
-    }
-  }
+  renderLaserBlobs = (() => {
+    let blob, meta, pointPairs, now, tt;
 
-  * renderEnemyVines() {
-    let meta, vine, tt, now;
-    let { gsFieldLanePointPairs: pointPairs } = this;
+    return function * () {
+      ({ gsFieldLanePointPairs: pointPairs, rsNow: now } = this);
 
-    now = Date.now();
+      for (blob of this.gsLaserBlobs) {
+        ({ meta } = pointPairs.at(blob.index));
+        tt = (now - blob.time) / LASER_BLOB_TRAVEL_TIME;
+        if (tt >= 1)
+          continue;
 
-    for (vine of this.gsEnemyVines) {
-      if (vine.growTime <= 0)
-        continue;
+        yield svg`
+          <circle
+            class="laserblob"
+            cx="${ util.lerp(meta.xOuter, meta.xInner, tt) }"
+            cy="${ util.lerp(meta.yOuter, meta.yInner, tt) }"
+            r="${  util.lerp(2,           0.5,         tt) }"
+            fill="currentColor"
+            stroke="none">
+          </circle>
+        `;
+      }
+    };
+  })();
 
-      // TODO this should be a lose-a-life scenario if it's >=1
-      tt = Math.min(1, ((vine.damagedAt ?? now) - vine.time) / vine.growTime);
-      ({ meta } = pointPairs.at(vine.index));
+  renderShip = (() => {
+    let pointPairs, ship, shipFloor, shipIndex,
+        shipT, shipPair, shipX, shipY,
+        shipAngle, shipAngleC, shipAngleS,
+        armLength, offset;
 
-      yield svg`
-        <line
-          class="enemy vine"
-          x1="${ util.lerp(meta.xInner, meta.xOuter, tt) }"
-          y1="${ util.lerp(meta.yInner, meta.yOuter, tt) }"
-          x2="${ meta.xInner }"
-          y2="${ meta.yInner }"
-          fill="none"
-          stroke="currentColor">
-        </line>
-      `;
+    return function * () {
+      ({
+        gsFieldLanePointPairs: pointPairs,
+        gsShip: ship,
+        gsShipFloor: shipFloor,
+        gsShipIndex: shipIndex
+      } = this);
 
-      if (!vine.damagedAt)
-        yield svg`<circle
-          class="enemy vine"
-          cx="${ util.lerp(meta.xInner, meta.xOuter, tt) }"
-          cy="${ util.lerp(meta.yInner, meta.yOuter, tt) }"
-          r="2"
-          fill="currentColor"
-          stroke="none">
-        </circle>
-      `;
-    }
-  }
+      shipT = ship - shipFloor;
+      shipPair = pointPairs.at(shipIndex);
+      shipX = util.lerp(
+        shipPair[0].xShip,
+        shipPair[1].xShip,
+        shipT
+      );
+      shipY = util.lerp(
+        shipPair[0].yShip,
+        shipPair[1].yShip,
+        shipT
+      );
+      shipAngle = util.lerp(
+        shipPair[0].angleActual,
+        shipPair[1].angleActual,
+        shipT
+      );
 
-  * renderLaserBlobs() {
-    let {
-      gsFieldLanePointPairs: pointPairs,
-      rsNow: now
-    } = this;
-    let meta, tt;
+      shipAngleC = Math.cos(shipAngle);
+      shipAngleS = Math.sin(shipAngle);
+      armLength = shipPair.meta.rOuter / 7;
 
-    for (let blob of this.gsLaserBlobs) {
-      ({ meta } = pointPairs.at(blob.index));
-      tt = (now - blob.time) / LASER_BLOB_TRAVEL_TIME;
-      if (tt >= 1)
-        continue;
+      for (offset of SHIP_BASE_OFFSETS) {
+        yield svg`
+          <line
+            class="ship"
+            x1="${ shipPair[0].xOuterF }"
+            y1="${ shipPair[0].yOuterF }"
+            x2="${ shipX+shipAngleC*offset }"
+            y2="${ shipY-shipAngleS*offset }"
+            stroke="currentColor"
+            stroke-width="0.5px">
+          </line>
 
-      yield svg`
-        <circle
-          class="laserblob"
-          cx="${ util.lerp(meta.xOuter, meta.xInner, tt) }"
-          cy="${ util.lerp(meta.yOuter, meta.yInner, tt) }"
-          r="${  util.lerp(2,           0.5,         tt) }"
-          fill="currentColor"
-          stroke="none">
-        </circle>
-      `;
-    }
-  }
+          <line
+            class="ship"
+            x1="${ shipPair[1].xOuterF }"
+            y1="${ shipPair[1].yOuterF }"
+            x2="${ shipX-shipAngleC*offset }"
+            y2="${ shipY+shipAngleS*offset }"
+            stroke="currentColor"
+            stroke-width="0.5px">
+          </line>
+        `;
+      }
 
-  * renderShip() {
-    const {
-      gsFieldLanePointPairs: pointPairs,
-      gsShip: ship,
-      gsShipFloor: shipFloor,
-      gsShipIndex: shipIndex
-    } = this;
-
-    let shipT = ship - shipFloor;
-    let shipPair = pointPairs.at(shipIndex);
-    let shipX = util.lerp(
-      shipPair[0].xShip,
-      shipPair[1].xShip,
-      shipT
-    );
-    let shipY = util.lerp(
-      shipPair[0].yShip,
-      shipPair[1].yShip,
-      shipT
-    );
-    let shipAngle = util.lerp(
-      shipPair[0].angleActual,
-      shipPair[1].angleActual,
-      shipT
-    );
-
-    let shipAngleC = Math.cos(shipAngle);
-    let shipAngleS = Math.sin(shipAngle);
-    let armLength = shipPair.meta.rOuter / 7;
-    let offset;
-
-    for (offset of SHIP_BASE_OFFSETS) {
-      yield svg`
-        <line
-          class="ship"
-          x1="${ shipPair[0].xOuterF }"
-          y1="${ shipPair[0].yOuterF }"
-          x2="${ shipX+shipAngleC*offset }"
-          y2="${ shipY-shipAngleS*offset }"
-          stroke="currentColor"
-          stroke-width="0.5px">
-        </line>
+      return yield svg`
+        <!-- Ship arms -->
 
         <line
           class="ship"
           x1="${ shipPair[1].xOuterF }"
           y1="${ shipPair[1].yOuterF }"
-          x2="${ shipX-shipAngleC*offset }"
-          y2="${ shipY+shipAngleS*offset }"
+          x2="${ (
+            shipPair[1].xOuter +
+            armLength * Math.cos(shipPair[1].angle + 0.75*Math.PI)
+          ).toFixed(2) }"
+          y2="${ (
+            shipPair[1].yOuter -
+            armLength * Math.sin(shipPair[1].angle + 0.65*Math.PI)
+          ).toFixed(2) }"
+          stroke="currentColor"
+          stroke-width="0.5px">
+        </line>
+
+        <line
+          class="ship"
+          x1="${ shipPair[0].xOuterF }"
+          y1="${ shipPair[0].yOuterF }"
+          x2="${ (
+            shipPair[0].xOuter +
+            armLength * Math.cos(shipPair[0].angle + 0.25*Math.PI)
+          ).toFixed(2) }"
+          y2="${ (
+            shipPair[0].yOuter -
+            armLength * Math.sin(shipPair[0].angle + 0.35*Math.PI)
+          ).toFixed(2) }"
           stroke="currentColor"
           stroke-width="0.5px">
         </line>
       `;
     }
-
-    return yield svg`
-      <!-- Ship arms -->
-
-      <line
-        class="ship"
-        x1="${ shipPair[1].xOuterF }"
-        y1="${ shipPair[1].yOuterF }"
-        x2="${ (
-          shipPair[1].xOuter +
-          armLength * Math.cos(shipPair[1].angle + 0.75*Math.PI)
-        ).toFixed(2) }"
-        y2="${ (
-          shipPair[1].yOuter -
-          armLength * Math.sin(shipPair[1].angle + 0.65*Math.PI)
-        ).toFixed(2) }"
-        stroke="currentColor"
-        stroke-width="0.5px">
-      </line>
-
-      <line
-        class="ship"
-        x1="${ shipPair[0].xOuterF }"
-        y1="${ shipPair[0].yOuterF }"
-        x2="${ (
-          shipPair[0].xOuter +
-          armLength * Math.cos(shipPair[0].angle + 0.25*Math.PI)
-        ).toFixed(2) }"
-        y2="${ (
-          shipPair[0].yOuter -
-          armLength * Math.sin(shipPair[0].angle + 0.35*Math.PI)
-        ).toFixed(2) }"
-        stroke="currentColor"
-        stroke-width="0.5px">
-      </line>
-    `;
-  }
+  })();
 }
 
 // It's just Object.assign under the hood. lit seems to pick up options directly
