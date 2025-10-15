@@ -17,8 +17,9 @@ const FIELD_TYPE_OPTIONS = Object.freeze([
   { label: 'Star', value: 'star' },
 ]);
 
-const ENEMY_VINE_GROW_TIME = 2_000;
-const LASER_BLOB_TRAVEL_TIME = 800;
+const ENEMY_VINE_CHUNKS      =     8;
+const ENEMY_VINE_GROW_TIME   = 2_000;
+const LASER_BLOB_TRAVEL_TIME =   800;
 
 const SHIP_BASE_OFFSETS = Object.freeze([ 1, -1 ]);
 const STATE = Object.freeze({
@@ -55,13 +56,13 @@ class JPTimpistElement extends LitElement {
       overflow-x: hidden;
       overflow-y: auto;
       padding: 0 var(--jp-common-padding) var(--jp-common-padding);
-      max-width: var(--jp-common-max-width);
     }
 
     form {
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
+      max-width: var(--jp-common-max-width);
     }
 
     form .field {
@@ -92,8 +93,8 @@ class JPTimpistElement extends LitElement {
       max-height: 100%;
       margin-top: var(--jp-common-padding);
       stroke-linecap: round;
-      overflow: hidden;
       flex-shrink: 1;
+      aspect-ratio: 1;
     }
 
     .note {
@@ -144,8 +145,8 @@ class JPTimpistElement extends LitElement {
     this.state = STATE.PREVIEW;
     let usp = new URLSearchParams(location.search);
     Object.assign(this, {
-      gsLaserBlobs: [],
-      gsEnemyVines: [],
+      gsLaserBlobs: new Set,
+      gsEnemyVines: new Set,
       gsFieldLaneCount: usp.get('preview-line-count') || 11,
       gsFieldType: usp.get('preview-type') || 'circle',
       gsShip: 0,
@@ -189,8 +190,9 @@ class JPTimpistElement extends LitElement {
     this.gsShip += this.gsShip / fieldLaneCount * diff;
     Object.assign(this, this.getFieldLaneData())
     Object.assign(this, this.getShipData());
-    this.gsLaserBlobs = this.gsLaserBlobs
-      .filter(laserBlob => Math.abs(laserBlob.index) < fieldLaneCount);
+    for (let blob of this.gsLaserBlobs)
+      if (Math.abs(laserBlob.index) >= fieldLaneCount)
+        this.gsLaserBlobs.delete(blob);
 
     let usp = new URLSearchParams(location.search);
     usp.set('preview-line-count', fieldLaneCount);
@@ -231,17 +233,20 @@ class JPTimpistElement extends LitElement {
     let index = this.gsShipIndex;
     let now = Date.now();
     let key = `${ index }-${ now }`
-    this.gsLaserBlobs.push({
+    this.gsLaserBlobs.add({
       key,
       index,
       time: now
     });
 
     let gcTime = now - LASER_BLOB_TRAVEL_TIME * 2;
+    let firstLB = this.gsLaserBlobs.values().next().value;
 
-    if (this.gsLaserBlobs[0]?.time < gcTime)  // NaN abuse alert
-      this.gsLaserBlobs = this.gsLaserBlobs
-        .filter(blob => blob.time >= now - LASER_BLOB_TRAVEL_TIME);
+    // NaN abuse alert. Only trigger cleanup run if first lb is v old
+    if (firstLB?.time < gcTime)
+      for (let lb of this.gsLaserBlobs)
+        if (lb.time < now - LASER_BLOB_TRAVEL_TIME)
+          this.gsLaserBlobs.delete(lb);
 
     this.updateToggle = !this.updateToggle;
   }
@@ -277,9 +282,9 @@ class JPTimpistElement extends LitElement {
       dist, meta;
 
     return (laserBlob, vine) => {
-      if (vine.index && (laserBlob.index !== vine.index))
+      if (vine.index && laserBlob.index !== vine.index)
         return false;
-      eTT = Math.min(1, (this.rsNow - vine.time) / vine.growTime);
+      eTT = Math.min(1, ((vine.damagedAt ?? this.rsNow) - vine.time) / vine.growTime);
       lbTT = (this.rsNow - laserBlob.time) / LASER_BLOB_TRAVEL_TIME;
 
       if (eTT >= 1 || lbTT >= 1)
@@ -295,6 +300,24 @@ class JPTimpistElement extends LitElement {
       dist = Math.sqrt((eX-lbX)**2 + (eY-lbY)**2);
       return dist <= lbR + eR;
     }
+  })();
+
+  checkCollisions = (() => {
+    let vine, laserBlob, vineLoss;
+    return () => {
+      for (laserBlob of this.gsLaserBlobs)
+        for (vine of this.gsEnemyVines)
+          if (this.checkCollisionBulletVine(laserBlob, vine)) {
+            vineLoss = vine.growTime / ENEMY_VINE_CHUNKS;
+            laserBlob.time = 0;
+            if (vine.damagedAt)
+              vine.damagedAt -= vineLoss;
+            else
+              vine.damagedAt = this.rsNow;
+            if ((vine.damagedAt - vineLoss) <= vine.time)
+              this.gsEnemyVines.delete(vine);
+          }
+    };
   })();
 
   * generateEnemies({ avoid, enemyType, placement, quantity }) {
@@ -416,15 +439,8 @@ class JPTimpistElement extends LitElement {
   }
 
   raffertyDownToBakerStreet() {
-    let vine, laserBlob;
     let loop = () => {
-      for (laserBlob of this.gsLaserBlobs)
-        for (vine of this.gsEnemyVines)
-          if (this.checkCollisionBulletVine(laserBlob, vine)) {
-            laserBlob.time = 0;
-            vine.damagedAt ??= this.rsNow;
-          }
-
+      this.checkCollisions();
       this.updateToggle = !this.updateToggle;
       requestAnimationFrame(loop);
     };
@@ -462,16 +478,13 @@ class JPTimpistElement extends LitElement {
 
     switch (enemyType) {
       case stage.ENEMY.VINE:
-        action.avoid = Iterator.from(this.gsEnemyVines).map(enemy => enemy.index);
-        this.gsEnemyVines = [
-          ...this.gsEnemyVines,
-          ...this.generateEnemies(action).map(enemy => {
-            enemy.health = 1;
-            enemy.time = now;
-            enemy.growTime = ENEMY_VINE_GROW_TIME * (Math.random() * 0.5 + 0.75); // 0.75 to 1.25
-            return enemy;
-          })
-        ];
+        action.avoid = this.gsEnemyVines.values().map(vine => vine.index);
+        for (let vine of this.generateEnemies(action)) {
+          vine.time = now;
+          // 75–125% of base grow time
+          vine.growTime = ENEMY_VINE_GROW_TIME * (Math.random() * 0.5 + 0.75);
+          this.gsEnemyVines.add(vine);
+        }
         break;
     }
   }
@@ -610,7 +623,7 @@ class JPTimpistElement extends LitElement {
     now = Date.now();
 
     for (vine of this.gsEnemyVines) {
-      if (vine.health <= 0)
+      if (vine.growTime <= 0)
         continue;
 
       // TODO this should be a lose-a-life scenario if it's >=1
@@ -627,7 +640,10 @@ class JPTimpistElement extends LitElement {
           fill="none"
           stroke="currentColor">
         </line>
-        <circle
+      `;
+
+      if (!vine.damagedAt)
+        yield svg`<circle
           class="enemy vine"
           cx="${ util.lerp(meta.xInner, meta.xOuter, tt) }"
           cy="${ util.lerp(meta.yInner, meta.yOuter, tt) }"
