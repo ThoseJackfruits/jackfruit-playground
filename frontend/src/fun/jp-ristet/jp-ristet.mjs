@@ -9,6 +9,7 @@ import { getPieceStreamWeighted, pieceHeight, pieceWidth, rotateShape, PIECES } 
 const COLUMNS = 8;
 const ROWS = 16;
 const CLEAR_LINE_DURATION = 300;
+const POINTS_PER_ROW = 1;
 
 class JPRistetElement extends LitElement {
   static properties = {
@@ -415,6 +416,7 @@ class JPRistetElement extends LitElement {
       }
 
       if (rowsToClear.size > 0) {
+        gameDataNew.score = (gameDataNew.score ?? 0) + (POINTS_PER_ROW * rowsToClear.size * rowsToClear.size);
         // Store the rows to be cleared
         this.clearedLines = rowsToClear;
         // Remove the cleared rows from buildup
@@ -740,7 +742,6 @@ class JPRistetElement extends LitElement {
           <span class="micro-display">${ this.renderStored() }</span>
         </div>
         <div>${ this.renderScore() }</div>
-        <div>${ this.renderMultiplier() }</div>
       </div>
       <div id="overlay">
         ${ this.renderOverlay() }
@@ -797,6 +798,7 @@ class JPRistetElement extends LitElement {
         return html`
           <div id="overlay-content">
             <h2>Game Over</h2>
+            <p>Score: ${ this.gameData.endData.score }</p>
             <p>Nice try!</p>
             <p><kbd>Space</kbd> to restart</p>
           </div>
@@ -851,15 +853,6 @@ class JPRistetElement extends LitElement {
 
     yield html`
       <span>Score: ${ score ?? 0 }</span>
-    `;
-  }
-
-  * renderMultiplier() {
-    let { multiplier } = 
-      this.gameData.endData ?? this.gameData.resumeData ?? this.gameData;
-
-    yield html`
-      <span>Multiplier: ${ multiplier ?? 1.0 }</span>
     `;
   }
 
