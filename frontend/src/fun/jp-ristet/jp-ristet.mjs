@@ -798,7 +798,7 @@ class JPRistetElement extends LitElement {
         return html`
           <div id="overlay-content">
             <h2>Game Over</h2>
-            <p>Score: ${ this.gameData.endData.score }</p>
+            <p>Score: ${ this.gameData.endData.score ?? 0 }</p>
             <p>Nice try!</p>
             <p><kbd>Space</kbd> to restart</p>
           </div>
