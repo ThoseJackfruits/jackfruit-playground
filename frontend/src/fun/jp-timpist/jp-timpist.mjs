@@ -137,6 +137,7 @@ class JPTimpistElement extends LitElement {
 
   rsNowLast;
   rsNow;
+  wheelScaleFound;
 
   // LIFECYCLE /////////////////////////////////////////////////////////////////
 
@@ -144,6 +145,8 @@ class JPTimpistElement extends LitElement {
     super();
     this.state = STATE.PREVIEW;
     let usp = new URLSearchParams(location.search);
+    let wheelScale = localStorage.getItem(LSKEY_WHEEL_SCALE);
+    this.wheelScaleFound = !!wheelScale;
     Object.assign(this, {
       gsLaserBlobs: new Set,
       gsEnemyVines: new Set,
@@ -152,7 +155,7 @@ class JPTimpistElement extends LitElement {
       gsShip: 0,
       gsShipFloor: 0,
       gsShipIndex: 0,
-      wheelScale: localStorage.getItem(LSKEY_WHEEL_SCALE) || 120
+      wheelScale: wheelScale || 10
     });
     Object.assign(this, this.getFieldLaneData());
   }
@@ -211,8 +214,7 @@ class JPTimpistElement extends LitElement {
 
   handleWheelScaleChange(event) {
     let scale = +event.target.value;
-    localStorage.setItem(LSKEY_WHEEL_SCALE, scale);
-    this.wheelScale = scale;
+    this.setWheelScale(scale);
   }
 
   handleKeyDown = event => {
@@ -259,6 +261,17 @@ class JPTimpistElement extends LitElement {
 
   handleWheel(event) {
     let dist = event.deltaY;
+
+    if (!this.wheelScaleFound) {
+      this.setWheelScale((() => {
+        switch (event.deltaMode) {
+          case WheelEvent.DOM_DELTA_LINE:  return 1;
+          case WheelEvent.DOM_DELTA_PAGE:  return 10;
+          case WheelEvent.DOM_DELTA_PIXEL: return -120;
+          default:                         return 10;
+        }
+      })());
+    }
 
     if (this.wheelScale > 0) {
       dist *= this.wheelScale;
@@ -500,6 +513,13 @@ class JPTimpistElement extends LitElement {
       this.runStage(action.next);
   }
 
+  setWheelScale(scale) {
+    this.wheelScaleFound ||= true;
+    scale ||= 1; // if 0
+    localStorage.setItem(LSKEY_WHEEL_SCALE, scale);
+    this.wheelScale = scale;
+  }
+
   shouldHandleKeyEvent(event) {
     return (
       event.target === this.svgElement ||
@@ -542,7 +562,13 @@ class JPTimpistElement extends LitElement {
         </div>
         <div class="field">
           <label for="wheel-scale">Scroll scale</label>
-          <input type="range" min="-200" max="200" value="${ this.wheelScale }" @change=${ this.handleWheelScaleChange } id="wheel-scale">
+          <input
+            type="range"
+            min="-200"
+            max="200"
+            value="${ this.wheelScale }"
+            @change=${ this.handleWheelScaleChange }
+            id="wheel-scale">
         </div>
       </form>
 
