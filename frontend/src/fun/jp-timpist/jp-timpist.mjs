@@ -34,12 +34,12 @@ class JPTimpistElement extends LitElement {
   static properties = {
     data: { state: true },
     gsEnemyVines: { state: true },
-    gsFieldLaneCount: { state: true },
+    gsFieldLaneCount: { state: true, type: Number },
     gsFieldType: { state: true },
     gsLaserBlobs: { state: true },
     gsShip: { state: true },
-    gsShipFloor: { state: true },
-    gsShipIndex: { state: true },
+    gsShipFloor: { state: true, type: Number },
+    gsShipIndex: { state: true, type: Number },
     state: { type: String, reflect: true },
     updateToggle: { state: true },
     wheelScale: { state: true }
@@ -56,6 +56,13 @@ class JPTimpistElement extends LitElement {
       overflow-x: hidden;
       overflow-y: auto;
       padding: 0 var(--jp-common-padding) var(--jp-common-padding);
+    }
+
+    @media (min-width: 500px) {
+      :host {
+        flex-direction: row;
+        gap: var(--jp-common-padding);
+      }
     }
 
     form {
@@ -95,6 +102,12 @@ class JPTimpistElement extends LitElement {
       stroke-linecap: round;
       flex-shrink: 1;
       aspect-ratio: 1;
+      border-radius: var(--jp-common-border-radius);
+    }
+
+    svg:focus-visible {
+      outline: 1px solid var(--jp-color-primary);
+      outline-offset: 0px;
     }
 
     .note {
@@ -166,6 +179,11 @@ class JPTimpistElement extends LitElement {
 
     document.addEventListener('keydown', this.handleKeyDown);
     document.addEventListener('keyup', this.handleKeyUp);
+    this.updateComplete.then(() => {
+      this.svgElement = this.shadowRoot.querySelector('svg');
+      setTimeout(() => this.svgElement.focus());
+      this.runStage(stage.one);
+    })
   }
 
   disconnectedCallback() {
@@ -178,11 +196,6 @@ class JPTimpistElement extends LitElement {
     super.disconnectedCallback();
   }
 
-  firstUpdated() {
-    this.svgElement = this.shadowRoot.querySelector('svg');
-    this.runStage(stage.one);
-  }
-
   // EVENT HANDLERS //////////////////////////////////////////////////////////
 
   handleFieldLaneCountChange(event) {
@@ -191,11 +204,11 @@ class JPTimpistElement extends LitElement {
     this.gsFieldLaneCount = fieldLaneCount;
     // Try to maintain (generally) same ship position as we add/remove lanes
     this.gsShip += this.gsShip / fieldLaneCount * diff;
+    for (let blob of this.gsLaserBlobs)
+      if (blob.index >= fieldLaneCount || blob.index < 0)
+        this.gsLaserBlobs.delete(blob);
     Object.assign(this, this.getFieldLaneData())
     Object.assign(this, this.getShipData());
-    for (let blob of this.gsLaserBlobs)
-      if (Math.abs(laserBlob.index) >= fieldLaneCount)
-        this.gsLaserBlobs.delete(blob);
 
     let usp = new URLSearchParams(location.search);
     usp.set('preview-line-count', fieldLaneCount);
@@ -339,6 +352,8 @@ class JPTimpistElement extends LitElement {
       stage.PLACEMENT_FN[placement](this.gsFieldLaneCount, quantity, avoid)();
     for (let i = 0; i < quantity; i++) {
       index = indexIterator.next().value;
+      if ('string' === typeof index)
+        throw new Error(`got string index: ${ index }`);
       yield {
         type: enemyType,
         index
@@ -501,7 +516,6 @@ class JPTimpistElement extends LitElement {
           vine.time = now;
           // 75–125% of base grow time
           vine.growTime = ENEMY_VINE_GROW_TIME * (Math.random() * 0.5 + 0.75);
-          console.log('--vi--', vine.index);
           this.gsEnemyVines.add(vine);
         }
         break;
@@ -535,48 +549,50 @@ class JPTimpistElement extends LitElement {
     this.rsNow = Date.now();
 
     return html`
-      <form @submit=${ this.handleSubmit }>
-        <div class="field">
-          <label for="field-type">Field type</label>
-          <select @change=${ this.handleFieldTypeChange } id="field-type">
-            ${ repeat(
-              FIELD_TYPE_OPTIONS,
-              ({ label, value }) => html`
-                <option
-                  ?selected=${ this.gsFieldType === value }
-                  value="${ value }">${ label }</option>
-              `
-            ) }
-          </select>
-        </div>
-        <div class="field">
-          <label for="field-lane-count">Side count</label>
-          <input
-            type="range"
-            min="3"
-            max="20"
-            step="1"
-            @input=${ this.handleFieldLaneCountChange}
-            id="field-lane-count"
-            value="${ this.gsFieldLaneCount }">
-        </div>
-        <div class="field">
-          <label for="wheel-scale">Scroll scale</label>
-          <input
-            type="range"
-            min="-200"
-            max="200"
-            value="${ this.wheelScale }"
-            @change=${ this.handleWheelScaleChange }
-            id="wheel-scale">
-        </div>
-      </form>
+      <div class="config">
+        <form @submit=${ this.handleSubmit }>
+          <div class="field">
+            <label for="field-type">Field type</label>
+            <select @change=${ this.handleFieldTypeChange } id="field-type">
+              ${ repeat(
+                FIELD_TYPE_OPTIONS,
+                ({ label, value }) => html`
+                  <option
+                    ?selected=${ this.gsFieldType === value }
+                    value="${ value }">${ label }</option>
+                `
+              ) }
+            </select>
+          </div>
+          <div class="field">
+            <label for="field-lane-count">Side count</label>
+            <input
+              type="range"
+              min="3"
+              max="20"
+              step="1"
+              @input=${ this.handleFieldLaneCountChange}
+              id="field-lane-count"
+              value="${ this.gsFieldLaneCount }">
+          </div>
+          <div class="field">
+            <label for="wheel-scale">Scroll scale</label>
+            <input
+              type="range"
+              min="-200"
+              max="200"
+              value="${ this.wheelScale }"
+              @change=${ this.handleWheelScaleChange }
+              id="wheel-scale">
+          </div>
+        </form>
 
-      <p id="instructions">
-        scroll and <kbd>&nbsp;&nbsp;&nbsp;space&nbsp;&nbsp;&nbsp;</kbd>
-        <br/>
-        <span class="note">(scroll devices with inertia work best)</span>
-      </p>
+        <p id="instructions">
+          scroll and <kbd>&nbsp;&nbsp;&nbsp;space&nbsp;&nbsp;&nbsp;</kbd>
+          <br/>
+          <span class="note">(scroll devices with inertia work best)</span>
+        </p>
+      </div>
       <svg
         @keydown="${ this.handleKeyDown }"
         @keyup="${ this.handleKeyUp }"

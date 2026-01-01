@@ -31,12 +31,12 @@ export const PLACEMENT_FN = Object.freeze({
     return function * distributePlacement() {
       let index, result;
       let start = Math.floor(Math.random() * filledLanes.length);
-      let direction = Math.random() > 0.5 ? 1 : -1;
+      let dir = Math.random() > 0.5 ? 1 : -1;
       let step = Math.max(1, Math.round(laneCount / totalCount));
 
       for (index of new Range(0, totalCount))
         if (!filledLanes[index]) {
-          result = (start + index*step*direction) % laneCount;
+          result = (start + index*step*dir) % laneCount;
           if (result < 0)
             yield result + laneCount;
           else
@@ -50,23 +50,23 @@ export const PLACEMENT_FN = Object.freeze({
     let filledLanes = Array.from({ length: laneCount }, () => null);
     let filledCount = 0;
 
-    if (avoid) {
-      for (let index of avoid) {
+    if (avoid)
+      for (let index of avoid)
         filledLanes[index] = true;
-      }
-    }
 
     return function * randomPlacement() {
-      let start, direction, foundEmpty;
+      let start, dir, foundEmpty;
 
       while (filledCount < totalCount) {
         start = Math.floor(Math.random() * filledLanes.length);
-        direction = Math.random() > 0.5 ? 1 : -1;
+        dir = Math.random() > 0.5 ? 1 : -1;
         foundEmpty = false;
 
-        // Start at a random point, and move in a random direction until an empty slot is found
-        for (let i = start; i != start - direction; i = (i + direction) % laneCount) {
-          if (filledLanes[i] != null)
+        // Start at a random point, and move in a random dir until an empty slot is found
+        for (let i = start; i != start - dir; i = (i+dir) % laneCount) {
+          if (i < 0)
+            i += laneCount;
+          if (filledLanes[i])
             continue;
           filledLanes[i] = true;
           filledCount++;
@@ -104,7 +104,7 @@ export function * one() {
 
   yield {
     type: ACTION.WAIT,
-    duration: 2_000
+    duration: 3_000
   };
 
   yield {
@@ -112,6 +112,18 @@ export function * one() {
     enemyType: ENEMY.VINE,
     quantity: 2,
     placement: PLACEMENT.RANDOM
+  };
+
+  yield {
+    type: ACTION.WAIT,
+    duration: 4_000
+  };
+
+  yield {
+    type: ACTION.SPAWN_ENEMY,
+    enemyType: ENEMY.VINE,
+    quantity: 3,
+    placement: PLACEMENT.DISTRIBUTE
   };
 
   yield {
