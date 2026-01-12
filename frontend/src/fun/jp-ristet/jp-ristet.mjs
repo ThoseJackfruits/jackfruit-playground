@@ -151,7 +151,7 @@ class JPRistetElement extends LitElement {
     }
 
     .grid-cell.on.I {
-      background-color: #8B8;
+      background-color: #BB8;
     }
 
     .grid-cell.on.J {
@@ -171,7 +171,7 @@ class JPRistetElement extends LitElement {
     }
 
     .grid-cell.on.T {
-      background-color: #000000;
+      background-color: #BBB;
     }
 
     .grid-cell.on.Z {
@@ -241,7 +241,7 @@ class JPRistetElement extends LitElement {
       }
 
       .grid-cell.on.T {
-        background-color: #ffffff;
+        background-color: #BBB;
       }
 
       .grid-cell.on.Z {
