@@ -20,7 +20,7 @@ class JPRistetElement extends LitElement {
     },
     gameData: { state: true },
     tickRate: { attribute: 'tick-rate', reflect: true, type: Number },
-    clearedLines: { state: true },
+    clearedLines: { type: Map, state: true },
   };
 
   static styles = css`
@@ -251,11 +251,16 @@ class JPRistetElement extends LitElement {
   `;
 
   previewStream = getPieceStreamWeighted();
-  tickRate;
   tickTimeout = null;
-  clearedLines = new Map();
 
   // LIFECYCLE /////////////////////////////////////////////////////////////////
+
+  constructor() {
+    super();
+    this.gameState = STATES.PAUSED;
+    this.tickRate = 800;
+    this.clearedLines = new Map();
+  }
 
   connectedCallback() {
     super.connectedCallback();

@@ -9,13 +9,19 @@
   },
   "imports": {
     "@std/path": "jsr:@std/path@^1.0.8",
-    "@store": "./backend/src/store/index.mjs"
+    "@store": "./backend/src/store/index.mjs",
+    "lit": "npm:lit@^3.3.1",
+    "lodash-es": "npm:lodash-es@^4.18.1",
+    "vite": "npm:vite@^7.0.6"
   },
   "lint": {
     "include": [ "backend/src" ]
   },
   "tasks": {
-    "start": "deno run --allow-env --allow-net --allow-read --allow-write --unstable-kv backend/src/index.mjs",
-    "watch": "deno run --allow-env --allow-net --allow-read --allow-write --unstable-kv --watch=backend/ backend/src/index.mjs"
+    "start:api": "deno run --node-modules-dir --allow-env --allow-net --allow-read --allow-write --unstable-kv backend/src/index.mjs",
+    "watch:api": "deno run --node-modules-dir --allow-env --allow-net --allow-read --allow-write --unstable-kv --watch=backend/ backend/src/index.mjs",
+    "watch:client": "deno run -A --node-modules-dir npm:vite",
+    "watch:build": "deno run -A --node-modules-dir npm:vite build --watch",
+    "build": "deno run -A --node-modules-dir npm:vite build"
   }
 }

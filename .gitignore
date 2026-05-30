@@ -1,1 +1,4 @@
 local.db*
+dist/
+.vite/
+node_modules/
