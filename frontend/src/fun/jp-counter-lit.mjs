@@ -3,7 +3,7 @@ import { sendMessage } from '../web-socket.mjs';
 
 class JPCounterLitElement extends LitElement {
   static properties = {
-    count: { type: BigInt }
+    count: { type: BigInt, state: true }
   };
 
   static styles = css`

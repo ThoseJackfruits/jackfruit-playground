@@ -3,13 +3,20 @@ import handleAPIRequest from './handle-api-request.mjs';
 import handleWebSocketUpgradeRequest from './handle-web-socket-upgrade-request.mjs';
 import { kv } from '@store';
 
+const CSP = [
+  `default-src 'self';`,
+  `font-src 'self' https://fonts.gstatic.com;`,
+  `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;`,
+  `img-src 'self';`
+].join(' ');
+
 Deno.serve(async req => {
   if (req.headers.get('upgrade') === 'websocket') {
     return await handleWebSocketUpgradeRequest(req);
   }
 
   const url = new URL(req.url);
-  const { pathname } = url;
+  let { pathname } = url;
 
   // In lieu of escaping pathname, just return Bad Req for '..'
   if (pathname.includes('..'))
@@ -23,38 +30,55 @@ Deno.serve(async req => {
 
   const extension = path.extname(pathname);
 
-  if (pathname.match(/^\/frontend\/(?:src|assets)\//)) {
-    const localPath = path.join('.', pathname);
+  if (pathname.startsWith('/frontend/')) {
+    console.log('FRONTEND', pathname);
+
     try {
       return new Response(await Deno.readFile(localPath, { signal }), {
         headers: {
-          "Content-Type": getContentType(extension)
-        },
+          'Content-Type': getContentType(extension)
+        }
       });
     } catch (error) {
       if (error instanceof Deno.errors.NotFound) {
-        return new Response("Not found", { status: 404 });
+        return new Response('Not found', { status: 404 });
       }
 
       throw error;
     }
   }
 
-  if (!extension) {
-    const importMap =
-      await Deno.readTextFile("./frontend/src/import_map.json", { signal });
-    const index = (await Deno.readTextFile("./index.html", { signal }))
-      .replace('__IMPORTMAP__', importMap);
 
-    return new Response(index, {
+  const assetsPath = path.join('.', 'dist');
+
+  if (pathname === '/' || pathname === '')
+    pathname = '/index.html';
+
+  const asset = path.join(assetsPath, pathname.substring(1));
+  let assetStat;
+
+  try {
+    assetStat = await Deno.stat(asset);
+  } catch (error) {
+    console.error(error);
+  }
+
+  if (assetStat?.isFile) {
+    return new Response(await Deno.readFile(asset, { signal }), {
       headers: {
-        "Content-Type": "text/html",
-        "X-Visitor-Count": await getNextVisitorCount(),
-      },
+        'Content-Security-Policy': CSP,
+        'Content-Type': getContentType(path.extname(asset)),
+      }
     });
   }
 
-  return new Response("Not found", { status: 404 });
+  const indexPath = path.join(assetsPath, 'index.html');
+  return new Response(await Deno.readFile(indexPath, { signal }), {
+    headers: {
+      'Content-Security-Policy': CSP,
+      'Content-Type': 'text/html'
+    }
+  });
 });
 
 function getContentType(extension) {

@@ -6,15 +6,15 @@
 <link rel="stylesheet" href="/frontend/src/styles/colors.css">
 <link rel="stylesheet" href="/frontend/src/styles/dimensions.css">
 <link rel="stylesheet" href="/frontend/src/styles/fonts.css">
-<script async src="/frontend/src/start.mjs"></script>
-<script async type="importmap">__IMPORTMAP__</script>
+<script type="module" async src="/frontend/src/window.mjs"></script>
+<script type="module" async src="/frontend/src/web-socket.mjs"></script>
+<script type="module" async src="/frontend/src/layout/jp-chassis.mjs"></script>
 <meta http-equiv="Cache-Control" content="max-age=86400">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-
-<script async type="module" src="https://unpkg.com/lit@3.2.1/index.js?module"></script>
 </head>
 
 <body>
+<jp-chassis></jp-chassis>
 
 <noscript>
   <h1>This website needs JS to work.</h1>
