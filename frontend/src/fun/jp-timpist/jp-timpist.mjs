@@ -177,8 +177,8 @@ class JPTimpistElement extends LitElement {
     super.connectedCallback();
     this.rafIndex = this.raffertyDownToBakerStreet();
 
-    document.addEventListener('keydown', this.handleKeyDown);
-    document.addEventListener('keyup', this.handleKeyUp);
+    this.addEventListener('keydown', this.handleKeyDown);
+    this.addEventListener('keyup', this.handleKeyUp);
     this.updateComplete.then(() => {
       this.svgElement = this.shadowRoot.querySelector('svg');
       setTimeout(() => this.svgElement.focus());
@@ -189,8 +189,8 @@ class JPTimpistElement extends LitElement {
   disconnectedCallback() {
     if (this.rafIndex != null)
       this.rafIndex = cancelAnimationFrame(this.rafIndex);
-    document.removeEventListener('keydown', this.handleKeyDown);
-    document.removeEventListener('keyup', this.handleKeyUp);
+    this.removeEventListener('keydown', this.handleKeyDown);
+    this.removeEventListener('keyup', this.handleKeyUp);
     this.data = null;
     this.state = null;
     super.disconnectedCallback();

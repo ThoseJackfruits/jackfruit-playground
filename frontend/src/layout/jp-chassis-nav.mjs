@@ -72,6 +72,20 @@ class JPChassisNavElement extends LitElement {
 
   // EVENT HANDLERS ////////////////////////////////////////////////////////////
 
+  handleKeyDown = event => {
+    console.log(event.target.previousElementSibling, event.target, event.target.nextElementSibling);
+    switch (event.key) {
+      case 'ArrowLeft':
+        event.preventDefault();
+        event.target.previousElementSibling?.focus();
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        event.target.nextElementSibling?.focus();
+        break;
+    }
+  };
+
   handleRouteChange = async event => {
     this.currentRoute = event.detail.path;
     await this.updateComplete;
@@ -90,7 +104,7 @@ class JPChassisNavElement extends LitElement {
 
   render() {
     return html`
-      <nav>
+      <nav @keydown="${ this.handleKeyDown }">
         <a class="${ this.renderClass('/') }" href="/">Home</a>
         <a class="${ this.renderClass('/ristet') }" href="/ristet">Ristet</a>
         <a class="${ this.renderClass('/timpist') }" href="/timpist">Timpist</a>
