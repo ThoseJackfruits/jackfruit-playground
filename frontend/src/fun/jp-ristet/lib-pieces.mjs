@@ -50,16 +50,16 @@ export const PIECES = deepFreeze({
 export function * getPieceStreamWeighted() {
   let pieceCount = Object.keys(PIECES).length;
   let pieceUsages =
-    Object.fromEntries(Object.keys(PIECES).map((name) => ([ name, 1 ])));
+    Object.fromEntries(Object.keys(PIECES).map(name => ([ name, 1 ])));
+  let totalUsages = pieceCount;
 
   for (let piecesPicked = 0; '⏏'; piecesPicked++) {
-    let totalUses = Object.values(pieceUsages).reduce((a, b) => a + b, 0);
     let end;
     let ranges = Object.entries(pieceUsages).reduce((a, [ name, uses ]) => {
       if (!end)
-        end = 1 / (pieceCount * uses / totalUses);
+        end = 1 / (pieceCount * uses / totalUsages);
       else
-        end += 1 / (pieceCount * uses / totalUses);
+        end += 1 / (pieceCount * uses / totalUsages);
       a.push({ name, end });
       return a;
     }, []);
@@ -67,6 +67,7 @@ export function * getPieceStreamWeighted() {
     let { name } = ranges.find(({ end }) => point < end) ?? ranges.at(-1);
     let piece = PIECES[name];
     pieceUsages[name]++;
+    totalUsages++;
     yield { name, ...piece };
   }
 }
